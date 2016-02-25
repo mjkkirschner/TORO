@@ -262,7 +262,7 @@ namespace Dynamo_TORO
                     bool intersection = p.DoesIntersect(l);
                     if (intersection)
                     {
-                        bool meets = l.EndPoint.IsAlmostEqualTo(p);
+                        bool meets = l.StartPoint.IsAlmostEqualTo(p);
                         if (meets)
                         {
                             lineList.Add(l);
