@@ -22,10 +22,11 @@ namespace Dynamo_TORO
         /// </summary>
         /// <param name="vecList"></param>
         /// <returns></returns>
-        public static List<Vector> sortPolar_Vector(List<Vector> vecList)
+        [MultiReturn(new[] { "sorted", "indices" })]
+        public static Dictionary<string, List<Object>> sortPolar_Vector(List<Vector> vecList)
         {
             List<double> angList = new List<double>();
-            List<Vector> newVecList = new List<Vector>();
+            List<Object> newList = new List<Object>();
 
             foreach (Vector v in vecList)
             {
@@ -34,7 +35,9 @@ namespace Dynamo_TORO
                 double d = Math.Sqrt(Math.Pow(x, 2) + Math.Pow(y, 2));
                 double xnorm = x / d;
                 double ynorm = y / d;
-                angList.Add(Math.Atan2(ynorm, xnorm));
+                double t = Math.Atan2(ynorm, xnorm);
+                if (y < 0) { t = t - 180; }
+                angList.Add(t);
             }
 
             var sortedAng = angList
@@ -42,12 +45,16 @@ namespace Dynamo_TORO
                 .OrderBy(x => x.Key)
                 .ToList();
 
-            List<int> indices = sortedAng.Select(x => x.Value).ToList();
+            List<Object> indices = sortedAng.Select(x => (Object) x.Value).ToList();
             foreach (int i in indices)
             {
-                newVecList.Add(vecList[i]);
+                newList.Add(vecList[i]);
             }
-            return newVecList;
+            return new Dictionary<string, List<Object>>
+            {
+                {"sorted", newList},
+                {"indices", indices}
+            };
         }
 
 
@@ -57,10 +64,11 @@ namespace Dynamo_TORO
         /// </summary>
         /// <param name="planeList">List of Planes</param>
         /// <returns></returns>
-        public static List<Plane> sortPolar_Plane(List<Plane> planeList)
+        [MultiReturn(new[] { "sorted", "indices" })]
+        public static Dictionary<string, List<Object>> sortPolar_Plane(List<Plane> planeList)
         {
             List<double> angList = new List<double>();
-            List<Plane> newPlList = new List<Plane>();
+            List<Object> newList = new List<Object>();
 
             foreach (Plane p in planeList)
             {
@@ -69,7 +77,9 @@ namespace Dynamo_TORO
                 double d = Math.Sqrt(Math.Pow(x, 2) + Math.Pow(y, 2));
                 double xnorm = x / d;
                 double ynorm = y / d;
-                angList.Add(Math.Atan2(ynorm, xnorm));
+                double t = Math.Atan2(ynorm, xnorm);
+                if (y < 0) { t = t - 180; }
+                angList.Add(t);
             }
 
             var sortedAng = angList
@@ -77,25 +87,30 @@ namespace Dynamo_TORO
                 .OrderBy(x => x.Key)
                 .ToList();
 
-            List<int> indices = sortedAng.Select(x => x.Value).ToList();
+            List<Object> indices = sortedAng.Select(x => (Object) x.Value).ToList();
             foreach (int i in indices)
             {
-                newPlList.Add(planeList[i]);
+                newList.Add(planeList[i]);
             }
-            return newPlList;
+            return new Dictionary<string, List<Object>>
+            {
+                {"sorted", newList},
+                {"indices", indices},
+            };
         }
-        
 
-        
+
+
         /// <summary>
         /// Sort coordinate systems directionality about arbitrary pole.
         /// </summary>
         /// <param name="csList">List of coordinate systems</param>
         /// <returns></returns>
-        public static List<CoordinateSystem> sortPolar_CoordSys(List<CoordinateSystem> csList)
+        [MultiReturn(new[] { "sorted", "indices" })]
+        public static Dictionary<string, List<Object>> sortPolar_CoordSys(List<CoordinateSystem> csList)
         {
             List<double> angList = new List<double>();
-            List<CoordinateSystem> newCSList = new List<CoordinateSystem>();
+            List<Object> newList = new List<Object>();
             
             foreach (CoordinateSystem cs in csList)
             {
@@ -104,7 +119,10 @@ namespace Dynamo_TORO
                 double d = Math.Sqrt(Math.Pow(x, 2) + Math.Pow(y, 2));
                 double xnorm = x / d;
                 double ynorm = y / d;
-                angList.Add(Math.Atan2(ynorm, xnorm));
+                double t = Math.Atan2(ynorm, xnorm);
+                if (y < 0) { t = t - 180; }
+
+                angList.Add(t);
             }
 
             var sortedAng = angList
@@ -112,12 +130,262 @@ namespace Dynamo_TORO
                 .OrderBy(x => x.Key)
                 .ToList();
 
-            List<int> indices = sortedAng.Select(x => x.Value).ToList();
+            List<Object> indices = sortedAng.Select(x => (Object) x.Value).ToList();
             foreach (int i in indices)
             {
-                newCSList.Add(csList[i]);
+                newList.Add(csList[i]);
             }
-            return newCSList;
+            return new Dictionary<string, List<Object>>
+            {
+                {"sorted", newList},
+                {"indices", indices}
+            };
+        }
+
+
+
+
+        /// <summary>
+        /// Sort vectors directionality about average pole and shift.
+        /// </summary>
+        /// <param name="vecList">List of vectors</param>
+        /// <param name="shift">Shift value</param>
+        /// <returns></returns>
+        [MultiReturn(new[] { "sorted", "indices" })]
+        public static Dictionary<string, List<Object>> sortPolar2_Vector(List<Vector> vecList, int shift = 0)
+        {
+            List<Object> newList = new List<Object>();
+            List<double> paramList = new List<double>();
+
+            List<double> vx = vecList.Select(p => p.X).ToList();
+            List<double> vy = vecList.Select(p => p.Y).ToList();
+            List<double> vz = vecList.Select(p => p.Z).ToList();
+
+            Vector vecAvg = Vector.ByCoordinates(vx.Average(), vy.Average(), vz.Average());
+            Circle guide = Circle.ByCenterPointRadiusNormal(Point.ByCoordinates(0, 0, 0), 1, vecAvg);
+            for (int i = 0; i < vecList.Count(); i++)
+            {
+                Point v = Point.ByCoordinates(vx[i], vy[i], vz[i]);
+                double param = guide.ParameterAtPoint(guide.ClosestPointTo(v));
+                paramList.Add(param);
+            }
+
+            var sortedParams = paramList
+                .Select((x, i) => new KeyValuePair<int, int>((int)x, i))
+                .OrderBy(x => x.Key)
+                .ToList();
+
+            List<Object> indices = sortedParams.Select(x => (Object)x.Value).ToList();
+            foreach (int i in indices) { newList.Add(vecList[i]); }
+
+            List<Object> shifted = new List<Object>();
+            if (shift < 0) { shift = newList.Count - shift % newList.Count - 1; }
+            if (Math.Abs(shift) >= newList.Count) { shift = shift % newList.Count; }
+            shifted = newList.GetRange(shift, newList.Count - shift);
+            shifted.AddRange(newList.GetRange(0, shift));
+
+            return new Dictionary<string, List<Object>>
+            {
+                {"sorted", shifted},
+                {"indices", indices},
+            };
+        }
+
+
+
+        /// <summary>
+        /// Sort planes by directionality about average pole and shift.
+        /// </summary>
+        /// <param name="planeList">List of planes</param>
+        /// <param name="shift">Shift value</param>
+        /// <returns></returns>
+        [MultiReturn(new[] { "sorted", "indices" })]
+        public static Dictionary<string, List<Object>> sortPolar2_Plane(List<Plane> planeList, int shift = 0)
+        {
+            List<Object> newList = new List<Object>();
+            List<double> paramList = new List<double>();
+
+            List<double> vx = planeList.Select(p => p.Normal.X).ToList();
+            List<double> vy = planeList.Select(p => p.Normal.Y).ToList();
+            List<double> vz = planeList.Select(p => p.Normal.Z).ToList();
+
+            Vector vecAvg = Vector.ByCoordinates(vx.Average(), vy.Average(), vz.Average());
+            Circle guide = Circle.ByCenterPointRadiusNormal(Point.ByCoordinates(0, 0, 0), 1, vecAvg);
+            for (int i = 0; i < planeList.Count(); i++)
+            {
+                Point v = Point.ByCoordinates(vx[i], vy[i], vz[i]);
+                double param = guide.ParameterAtPoint(guide.ClosestPointTo(v));
+                paramList.Add(param);
+            }
+
+            var sortedParams = paramList
+                .Select((x, i) => new KeyValuePair<int, int>((int)x, i))
+                .OrderBy(x => x.Key)
+                .ToList();
+
+            List<Object> indices = sortedParams.Select(x => (Object)x.Value).ToList();
+            foreach (int i in indices) { newList.Add(planeList[i]); }
+
+            List<Object> shifted = new List<Object>();
+            if (shift < 0) { shift = newList.Count - shift % newList.Count - 1; }
+            if (Math.Abs(shift) >= newList.Count) { shift = shift % newList.Count; }
+            shifted = newList.GetRange(shift, newList.Count - shift);
+            shifted.AddRange(newList.GetRange(0, shift));
+
+            return new Dictionary<string, List<Object>>
+            {
+                {"sorted", shifted},
+                {"indices", indices},
+            };
+        }
+
+
+
+        /// <summary>
+        /// Sort coordinate systems by directionality about average pole and shift.
+        /// </summary>
+        /// <param name="csList">List of coordinate systems</param>
+        /// <param name="shift">Shift value</param>
+        /// <returns></returns>
+        [MultiReturn(new[] { "sorted", "indices" })]
+        public static Dictionary<string, List<Object>> sortPolar2_CoordSys(List<CoordinateSystem> csList, int shift = 0)
+        {
+            List<Object> newList = new List<Object>();
+            List<double> paramList = new List<double>();
+
+            List<double> vx = csList.Select(p => p.ZAxis.X).ToList();
+            List<double> vy = csList.Select(p => p.ZAxis.Y).ToList();
+            List<double> vz = csList.Select(p => p.ZAxis.Z).ToList();
+
+            Vector vecAvg = Vector.ByCoordinates(vx.Average(), vy.Average(), vz.Average());
+            Circle guide = Circle.ByCenterPointRadiusNormal(Point.ByCoordinates(0, 0, 0), 1, vecAvg);
+            for (int i = 0; i < csList.Count(); i++)
+            {
+                Point v = Point.ByCoordinates(vx[i], vy[i], vz[i]);
+                double param = guide.ParameterAtPoint(guide.ClosestPointTo(v));
+                paramList.Add(param);
+            }
+
+            var sortedParams = paramList
+                .Select((x, i) => new KeyValuePair<int, int>((int)x, i))
+                .OrderBy(x => x.Key)
+                .ToList();
+
+            List<Object> indices = sortedParams.Select(x => (Object)x.Value).ToList();
+            foreach (int i in indices) { newList.Add(csList[i]); }
+
+            List<Object> shifted = new List<Object>();
+            if (shift < 0) { shift = newList.Count - shift % newList.Count - 1; }
+            if (Math.Abs(shift) >= newList.Count) { shift = shift % newList.Count; }
+            shifted = newList.GetRange(shift, newList.Count - shift);
+            shifted.AddRange(newList.GetRange(0, shift));
+
+            return new Dictionary<string, List<Object>>
+            {
+                {"sorted", shifted},
+                {"indices", indices},
+            };
+        }
+
+
+
+        /// <summary>
+        /// Shift the contents of a list by value.
+        /// </summary>
+        /// <param name="lst">List of objects</param>
+        /// <param name="shift">Shift value</param>
+        /// <returns></returns>
+        public static List<Object> shiftList(List<Object> lst, int shift = 0)
+        {
+            List<Object> shifted = new List<Object>();
+            if (shift < 0) { shift = lst.Count - shift % lst.Count - 1; }
+            if (Math.Abs(shift) >= lst.Count) { shift = shift % lst.Count; }
+            shifted = lst.GetRange(shift, lst.Count - shift);
+            shifted.AddRange(lst.GetRange(0, shift));
+            return shifted;
+        }
+
+
+
+        /// <summary>
+        /// Create a set from only the unique items in a list.
+        /// </summary>
+        /// <param name="lst"></param>
+        /// <returns></returns>
+        public static List<Object> createSet(List<Object> lst)
+        {
+            List<Object> set = lst.Distinct().ToList();
+            return set;
+        }
+
+
+
+        /// <summary>
+        /// Test plane normals against guide vector and angular tolerance.
+        /// </summary>
+        /// <param name="planeList">Planes to test</param>
+        /// <param name="guide">Guide vector</param>
+        /// <param name="tolerance">Angular tolerance (degrees)</param>
+        /// <returns></returns>
+        [MultiReturn(new[] { "passed", "failed" })]
+        public static Dictionary<string, List<Plane>> testAngular_Plane(List<Plane> planeList, [DefaultArgumentAttribute("{Vector.ByCoordinates(0,0,-1)}")] Vector guide, double tolerance = 120)
+        {
+            List<Plane> passed = new List<Plane>();
+            List<Plane> failed = new List<Plane>();
+
+            foreach (Plane p in planeList)
+            {
+                double dot = p.Normal.Dot(guide);
+                double angle = Math.Acos(dot) * (180 / Math.PI);
+                if (angle > tolerance)
+                {
+                    failed.Add(p);
+                }
+                else
+                {
+                    passed.Add(p);
+                }
+            }
+            return new Dictionary<string, List<Plane>>
+            {
+                {"passed", passed},
+                {"failed", failed}
+            };
+        }
+
+
+
+        /// <summary>
+        /// Test coordinate system Z-axes against guide vector and angular tolerance.
+        /// </summary>
+        /// <param name="csList">Coordinate systems to test</param>
+        /// <param name="guide">Guide vector</param>
+        /// <param name="tolerance">Angular tolerance (degrees)</param>
+        /// <returns></returns>
+        [MultiReturn(new[] { "passed", "failed" })]
+        public static Dictionary<string, List<CoordinateSystem>> testAngular_CoordSys(List<CoordinateSystem> csList, [DefaultArgumentAttribute("{Vector.ByCoordinates(0,0,-1)}")] Vector guide, double tolerance = 120)
+        {
+            List<CoordinateSystem> passed = new List<CoordinateSystem>();
+            List<CoordinateSystem> failed = new List<CoordinateSystem>();
+
+            foreach (CoordinateSystem cs in csList)
+            {
+                double dot = cs.ZAxis.Dot(guide);
+                double angle = Math.Acos(dot) * (180 / Math.PI);
+                if (angle > tolerance)
+                {
+                    failed.Add(cs);
+                }
+                else
+                {
+                    passed.Add(cs);
+                }
+            }
+            return new Dictionary<string, List<CoordinateSystem>>
+            {
+                {"passed", passed},
+                {"failed", failed}
+            };
         }
 
 
@@ -397,16 +665,17 @@ namespace Dynamo_TORO
                 var targBuilder = new StringBuilder();
                 var moveBuilder = new StringBuilder();
                 targBuilder.Append(string.Format("\n\tVAR jointtarget j0 := {0};", jtarget(-90, 0, 0, 90, 90, 0)));
+                targBuilder.Append(string.Format("\n\tVAR jointtarget j1 := {0};", jtarget(-41, 0, 0, 0, 90, 0)));
                 foreach (Plane hole in holes)
                 {
                     // create targets
-                    targBuilder.Append(string.Format("\n\tVAR robtarget p{0}0 := {1};", index, rtarget((Plane) hole.Translate(hole.Normal, 100))));
-                    targBuilder.Append(string.Format("\n\tVAR robtarget p{0}1 := {1};", index, rtarget((Plane) hole.Translate(hole.Normal, 30))));
+                    targBuilder.Append(string.Format("\n\tVAR robtarget p{0}0 := {1};", index, rtarget((Plane) hole.Translate(hole.Normal, -100))));
+                    targBuilder.Append(string.Format("\n\tVAR robtarget p{0}1 := {1};", index, rtarget((Plane) hole.Translate(hole.Normal, -30))));
                     targBuilder.Append(string.Format("\n\tVAR robtarget p{0}2 := {1};", index, rtarget((Plane) hole.Translate(hole.Normal, 0))));
 
                     // create movement instructions
                     moveBuilder.Append(string.Format("\n"));
-                    moveBuilder.Append(string.Format("\n\t\tTPWrite(\"Drilling hole {0} of {1}!\");", index, holes.Count()));
+                    moveBuilder.Append(string.Format("\n\t\tTPWrite(\"Drilling hole {0} of {1}!\");", index + 1, holes.Count()));
                     moveBuilder.Append(string.Format("\n\t\tMoveL p{0}0, {1}, {2}, drill\\WObj:=block;", index, "v100", "z5"));
                     moveBuilder.Append(string.Format("\n\t\tMoveL p{0}1, {1}, {2}, drill\\WObj:=block;", index, "v100", "z5"));
                     moveBuilder.Append(string.Format("\n\t\tMoveL p{0}2, {1}, {2}, drill\\WObj:=block;", index, "rate", "fine"));
@@ -437,8 +706,10 @@ namespace Dynamo_TORO
                         "\n" +
                         "\n\t\t" + "TPWrite(\"This is: " + filePrefix + "_" + paddedIndex + "\");" +
                         "\n\t\t" + "TPWrite(\"Check block and drill\");" +
-                        "\n\t\t" + "MoveAbsJ j0, v100, z5, tool0;" + moveBuilder.ToString() +
+                        "\n\t\t" + "MoveAbsJ j0, v100, z5, tool0;" + 
+                        "\n\t\t" + "MoveAbsJ j1, v100, z5, tool0;" + moveBuilder.ToString() +
                         "\n\n\t\t" + "TPWrite(\"Resetting axes...\");" +
+                        "\n\t\t" + "MoveAbsJ j1, v100, z5, tool0;" +
                         "\n\t\t" + "MoveAbsJ j0, v100, z5, tool0;" +
                         "\n" +
                         "\n\t\t" + "Stop;" +

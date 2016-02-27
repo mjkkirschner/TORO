@@ -30,6 +30,63 @@
             <param name="csList">List of coordinate systems</param>
             <returns></returns>
         </member>
+        <member name="M:Dynamo_TORO.WIP_ROBARCH.sortPolar2_Vector(System.Collections.Generic.List{Autodesk.DesignScript.Geometry.Vector},System.Int32)">
+            <summary>
+            Sort vectors directionality about average pole and shift.
+            </summary>
+            <param name="vecList">List of vectors</param>
+            <param name="shift">Shift value</param>
+            <returns></returns>
+        </member>
+        <member name="M:Dynamo_TORO.WIP_ROBARCH.sortPolar2_Plane(System.Collections.Generic.List{Autodesk.DesignScript.Geometry.Plane},System.Int32)">
+            <summary>
+            Sort planes by directionality about average pole and shift.
+            </summary>
+            <param name="planeList">List of planes</param>
+            <param name="shift">Shift value</param>
+            <returns></returns>
+        </member>
+        <member name="M:Dynamo_TORO.WIP_ROBARCH.sortPolar2_CoordSys(System.Collections.Generic.List{Autodesk.DesignScript.Geometry.CoordinateSystem},System.Int32)">
+            <summary>
+            Sort coordinate systems by directionality about average pole and shift.
+            </summary>
+            <param name="csList">List of coordinate systems</param>
+            <param name="shift">Shift value</param>
+            <returns></returns>
+        </member>
+        <member name="M:Dynamo_TORO.WIP_ROBARCH.shiftList(System.Collections.Generic.List{System.Object},System.Int32)">
+            <summary>
+            Shift the contents of a list by value.
+            </summary>
+            <param name="lst">List of objects</param>
+            <param name="shift">Shift value</param>
+            <returns></returns>
+        </member>
+        <member name="M:Dynamo_TORO.WIP_ROBARCH.createSet(System.Collections.Generic.List{System.Object})">
+            <summary>
+            Create a set from only the unique items in a list.
+            </summary>
+            <param name="lst"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Dynamo_TORO.WIP_ROBARCH.testAngular_Plane(System.Collections.Generic.List{Autodesk.DesignScript.Geometry.Plane},Autodesk.DesignScript.Geometry.Vector,System.Double)">
+            <summary>
+            Test plane normals against guide vector and angular tolerance.
+            </summary>
+            <param name="planeList">Planes to test</param>
+            <param name="guide">Guide vector</param>
+            <param name="tolerance">Angular tolerance (degrees)</param>
+            <returns></returns>
+        </member>
+        <member name="M:Dynamo_TORO.WIP_ROBARCH.testAngular_CoordSys(System.Collections.Generic.List{Autodesk.DesignScript.Geometry.CoordinateSystem},Autodesk.DesignScript.Geometry.Vector,System.Double)">
+            <summary>
+            Test coordinate system Z-axes against guide vector and angular tolerance.
+            </summary>
+            <param name="csList">Coordinate systems to test</param>
+            <param name="guide">Guide vector</param>
+            <param name="tolerance">Angular tolerance (degrees)</param>
+            <returns></returns>
+        </member>
         <member name="M:Dynamo_TORO.WIP_ROBARCH.alignByXAxis_Plane(System.Collections.Generic.List{Autodesk.DesignScript.Geometry.Plane},Autodesk.DesignScript.Geometry.Vector,System.Double)">
             <summary>
             Aligns XAxis of plane to guide vector (default: World XAxis)
