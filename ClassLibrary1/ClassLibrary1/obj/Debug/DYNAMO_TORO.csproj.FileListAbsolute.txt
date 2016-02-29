@@ -33,3 +33,9 @@ C:\Users\Nick Cote\Documents\Autodesk\TORO\ClassLibrary1\ClassLibrary1\bin\Debug
 C:\Users\Nick Cote\Documents\Autodesk\TORO\ClassLibrary1\ClassLibrary1\obj\Debug\DYNAMO_TORO.csprojResolveAssemblyReference.cache
 C:\Users\Nick Cote\Documents\Autodesk\TORO\ClassLibrary1\ClassLibrary1\obj\Debug\DYNAMO_TORO.dll
 C:\Users\Nick Cote\Documents\Autodesk\TORO\ClassLibrary1\ClassLibrary1\obj\Debug\DYNAMO_TORO.pdb
+Y:\TORO\ClassLibrary1\ClassLibrary1\bin\Debug\DYNAMO_TORO.XML
+Y:\TORO\ClassLibrary1\ClassLibrary1\bin\Debug\DYNAMO_TORO.dll
+Y:\TORO\ClassLibrary1\ClassLibrary1\bin\Debug\DYNAMO_TORO.pdb
+Y:\TORO\ClassLibrary1\ClassLibrary1\obj\Debug\DYNAMO_TORO.csprojResolveAssemblyReference.cache
+Y:\TORO\ClassLibrary1\ClassLibrary1\obj\Debug\DYNAMO_TORO.dll
+Y:\TORO\ClassLibrary1\ClassLibrary1\obj\Debug\DYNAMO_TORO.pdb
