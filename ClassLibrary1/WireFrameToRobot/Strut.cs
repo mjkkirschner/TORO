@@ -108,12 +108,21 @@ namespace WireFrameToRobot.Extensions
 
         public static bool SameLine (this Line a, Line b)
             {
+            var astart = a.StartPoint;
+            var aend = a.EndPoint;
+            var bstart = b.StartPoint;
+            var bend = b.EndPoint;
 
-            if ((a.StartPoint.IsAlmostEqualTo(b.StartPoint) && a.EndPoint.IsAlmostEqualTo(b.EndPoint))
-                || (a.EndPoint.IsAlmostEqualTo(b.StartPoint) && (a.StartPoint.IsAlmostEqualTo(b.EndPoint))))
+            var oldgeo = new List<Geometry>(){ astart,aend,bstart,bend};
+            
+
+            if ((astart.IsAlmostEqualTo(bstart) && aend.IsAlmostEqualTo(bend))
+                || (aend.IsAlmostEqualTo(bstart) && (astart.IsAlmostEqualTo(bend))))
             {
+                oldgeo.ForEach(x => x.Dispose());
                 return true;
             }
+            oldgeo.ForEach(x => x.Dispose());
             return false;
             }
 

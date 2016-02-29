@@ -21,7 +21,19 @@ namespace WireFrameToRobot
     {
 
         public Point Center { get; private set; }
-        public Solid NodeGeometry { get; private set; }
+        public Solid NodeGeometry { get
+            {
+                var struts = this.Struts.Select(x => x.StrutGeometry);
+                var output = this.OrientedNodeGeometry.DifferenceAll(struts);
+               foreach(var strut in struts)
+                {
+                    strut.Dispose();
+                }
+                return output;
+
+            }
+        }
+
         public List<Strut> Struts { get; private set; }
         public string ID { get; private set; }
 
@@ -57,6 +69,22 @@ namespace WireFrameToRobot
         }
 
         private Surface holderFacePreTransform;
+
+
+        public static void DebugFailure(List<Point> nodeCenters, List<Line> struts, Solid baseNode)
+        {
+            //prune all duplicate inputs from wireframe
+            var prunedPoints = Point.PruneDuplicates(nodeCenters);
+            var prunedLines = GeometryExtensions.PruneDuplicates(struts);
+
+            foreach (var centerPoint in prunedPoints)
+            {
+                //find adjacent struts for this node
+                var intersectingLines = findAdjacentLines(centerPoint, prunedLines);
+            }
+
+        }
+
         /// <summary>
         /// construct list of nodes from a list of points and lines, this method finds the struts that belong 
         /// to each node, orient them correctly, and constructs a geometric representation of the individual nodes
@@ -80,6 +108,7 @@ namespace WireFrameToRobot
                 //find adjacent struts for this node
                 var intersectingLines = findAdjacentLines(centerPoint, prunedLines);
                 var currentNode = new Node(new string(basestring), centerPoint, baseNode, intersectingLines, strutDiameter, nodeOrientationStrategy);
+               
                 //get the most z face and store it as the holder face
                 var surfaces = baseNode.Explode().OfType<Surface>().OrderBy(x => x.PointAtParameter(.5, .5).Z).ToList();
                 currentNode.holderFacePreTransform = surfaces.Last();
@@ -93,7 +122,7 @@ namespace WireFrameToRobot
                 basestring[i] = (char)(basestring[i] + 1);
                 i++;
             }
-
+           
             //from the set of nodes, find the unique struts and use these to update the ids of the struts
             var graphEdges = UniqueStruts(output);
             foreach(var edge in graphEdges)
@@ -115,7 +144,7 @@ namespace WireFrameToRobot
                     strut.SetId(id);
                 }
             }
-
+           
             return output;
         }
 
@@ -137,7 +166,17 @@ namespace WireFrameToRobot
         {
 
             var sphere = Sphere.ByCenterPointRadius(center, 3);
-            var intersectingLines = allLines.Where(x => sphere.DoesIntersect(x)).ToList();
+            var intersectingLines = new List<Line>(); 
+
+            foreach(var line in allLines)
+            { var results = sphere.Intersect(line);
+                if (results.Count() > 0)
+                {
+                    intersectingLines.Add(line);
+                }
+                results.ForEach(x => x.Dispose());
+            }
+            //var intersectingLines = allLines.Where(x => sphere.DoesIntersect(x)).ToList();
             sphere.Dispose();
             return intersectingLines;
         }
@@ -153,9 +192,7 @@ namespace WireFrameToRobot
             //construct stuts from these new lines
             this.Struts = newlines.Select(x => new Strut(x, strutDiameter, this)).ToList();
             //calculate the orientation of the node based on the orientation strategy
-            this.OrientedNodeGeometry = orientNode(strategy, this.Struts);
-            //subtract the strut geometry from the nodegeo and reassign it
-            NodeGeometry = this.OrientedNodeGeometry.DifferenceAll(this.Struts.Select(x => x.StrutGeometry).ToList());
+            this.OrientedNodeGeometry = orientNode(strategy, this.Struts);           
 
         }
 
@@ -177,7 +214,12 @@ namespace WireFrameToRobot
                     //reverse the normal so the top face is correct
                     var plane = Plane.ByOriginNormal(Center, averageNorm.Reverse());
                     var newCs = CoordinateSystem.ByPlane(plane);
-                    return originalGeometry.Transform(newCs) as Solid;
+                   
+                    var output = originalGeometry.Transform(newCs) as Solid;
+                    plane.Dispose();
+                    newCs.Dispose();
+
+                    return output;
 
                     break;
 
@@ -206,11 +248,30 @@ namespace WireFrameToRobot
         {
             if (line.EndPoint.IsAlmostEqualTo(point))
             {
-                return line.Reverse() as Line;
+                var output = line.Reverse() as Line;
+                return output ;
             }
             return line;
         }
 
+        public static List<Strut> FindUniqueStruts (List<Node>nodes)
+        {
+           var edges = UniqueStruts(nodes);
+            return edges.Select(x => x.GeometryEdges.First()).ToList();
+        }
+
+        public static double TotalStrutLength(List<Node> nodes)
+        {
+         var struts = FindUniqueStruts(nodes);
+            var lines = struts.Select(x => x.LineRepresentation);
+            var sum = 0.0;
+            foreach(var line in lines)
+            {
+                sum = sum + line.Length;
+            }
+
+            return sum;
+        }
         private static List<GraphEdge<Node, Strut>> UniqueStruts(List<Node> nodes)
         {
             //create a list to store all the edges we have seen
