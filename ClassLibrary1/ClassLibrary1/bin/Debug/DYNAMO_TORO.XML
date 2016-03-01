@@ -80,6 +80,14 @@
             <param name="tolerance">Angular tolerance (degrees)</param>
             <returns></returns>
         </member>
+        <member name="M:Dynamo_TORO.WIP_ROBARCH.testAngular2_Plane(System.Collections.Generic.List{Autodesk.DesignScript.Geometry.Plane},System.Double)">
+            <summary>
+            Test plane normals against each other and angular tolerance.
+            </summary>
+            <param name="planeList">Planes to test</param>
+            <param name="tolerance">Angular tolerance (degrees)</param>
+            <returns></returns>
+        </member>
         <member name="M:Dynamo_TORO.WIP_ROBARCH.alignByXAxis_Plane(System.Collections.Generic.List{Autodesk.DesignScript.Geometry.Plane},Autodesk.DesignScript.Geometry.Vector,System.Double)">
             <summary>
             Aligns XAxis of plane to guide vector (default: World XAxis)
