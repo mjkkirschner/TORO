@@ -62,13 +62,6 @@
             <param name="shift">Shift value</param>
             <returns></returns>
         </member>
-        <member name="M:Dynamo_TORO.WIP_ROBARCH.createSet(System.Collections.Generic.List{System.Object})">
-            <summary>
-            Create a set from only the unique items in a list.
-            </summary>
-            <param name="lst"></param>
-            <returns></returns>
-        </member>
         <member name="M:Dynamo_TORO.WIP_ROBARCH.testAngular_Plane(System.Collections.Generic.List{Autodesk.DesignScript.Geometry.Plane},Autodesk.DesignScript.Geometry.Vector,System.Double)">
             <summary>
             Test plane normals against guide vector and angular tolerance.

@@ -307,16 +307,72 @@ namespace Dynamo_TORO
 
 
 
+        /*
         /// <summary>
-        /// Create a set from only the unique items in a list.
+        /// Create a set from only the unique items in a list of points, vectors, planes, or coordinate systems.
         /// </summary>
-        /// <param name="lst"></param>
+        /// <param name="listIn"></param>
         /// <returns></returns>
-        public static List<Object> createSet(List<Object> lst)
+        [MultiReturn(new[] { "passed", "failed" })]
+        public static Dictionary<string, List<Object>> getUnique(List<Object> listIn)
         {
-            List<Object> set = lst.Distinct().ToList();
-            return set;
+            List<Object> passed = new List<Object>();
+            List<Object> failed = new List<Object>();
+
+            Type t = listIn.GetType().GetGenericArguments()[0];
+            bool b = typeof(Point).IsAssignableFrom(typeof(t));
+
+            switch (t.Name)
+            {
+                case "Point":
+                    List<Point> pts = listIn.Cast<Point>().ToList();
+                    List<Point> ptsDistinct = pts
+                      .GroupBy(pt => new { pt.X, pt.Y, pt.Z })
+                      .Select(g => g.First())
+                      .ToList();
+                    passed = ptsDistinct.Cast<Object>().ToList();
+                    failed = listIn.Except(passed).ToList();
+                    break;
+
+                case "Vector":
+                    List<Vector> vecs = listIn.Cast<Vector>().ToList();
+                    List<Vector> vecsDistinct = vecs
+                      .GroupBy(v => new { v.X, v.Y, v.Z })
+                      .Select(g => g.First())
+                      .ToList();
+                    passed = vecsDistinct.Cast<Object>().ToList();
+                    failed = listIn.Except(passed).ToList();
+                    break;
+
+                case "Plane":
+                    List<Plane> plns = listIn.Cast<Plane>().ToList();
+                    List<Plane> plnsDistinct = plns
+                      .GroupBy(pl => new { pl.Origin, pl.Normal, pl.XAxis })
+                      .Select(g => g.First())
+                      .ToList();
+                    passed = plnsDistinct.Cast<Object>().ToList();
+                    failed = listIn.Except(passed).ToList();
+                    break;
+
+                case "CoordinateSystem":
+                    List<CoordinateSystem> css = listIn.Cast<CoordinateSystem>().ToList();
+                    List<CoordinateSystem> cssDistinct = css
+                      .GroupBy(cs => new { cs.Origin, cs.ZAxis, cs.XAxis })
+                      .Select(g => g.First())
+                      .ToList();
+                    passed = cssDistinct.Cast<Object>().ToList();
+                    failed = listIn.Except(passed).ToList();
+                    break;
+            }
+
+            failed.Add((Object) type.Name);
+            return new Dictionary<string, List<Object>>
+            {
+                {"passed", passed},
+                {"failed", failed}
+            };
         }
+        */
 
 
 
