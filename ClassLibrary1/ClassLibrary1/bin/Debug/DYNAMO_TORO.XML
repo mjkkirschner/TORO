@@ -9,6 +9,31 @@
             Container for RobArch workflow
             </summary>
         </member>
+        <member name="M:Dynamo_TORO.WIP_ROBARCH.vis_tool(Autodesk.DesignScript.Geometry.Plane)">
+            <summary>
+            Create geometry representation of tool.
+            </summary>
+            <param name="frame">Tool frame at drill tip</param>
+            <returns></returns>
+        </member>
+        <member name="M:Dynamo_TORO.WIP_ROBARCH.vis_wobj(Autodesk.DesignScript.Geometry.Plane)">
+            <summary>
+            Create geometry representation of wobj.
+            </summary>
+            <param name="frame">Wobj frame at cube centroid</param>
+            <returns></returns>
+        </member>
+        <member name="M:Dynamo_TORO.WIP_ROBARCH.vis_transform(System.Collections.Generic.List{System.Collections.Generic.List{Autodesk.DesignScript.Geometry.Plane}},Autodesk.DesignScript.Geometry.Plane,Autodesk.DesignScript.Geometry.Plane,System.Int32,System.Int32)">
+            <summary>
+            Create geometry representation of targets using wobj and tool.
+            </summary>
+            <param name="holeFrames">List of target frames</param>
+            <param name="blockFrame">Wobj frame</param>
+            <param name="drillFrame">Tool frame</param>
+            <param name="nodeIndex">Index of node</param>
+            <param name="poseIndex">Index of pose</param>
+            <returns></returns>
+        </member>
         <member name="M:Dynamo_TORO.WIP_ROBARCH.sortPolar_Vector(System.Collections.Generic.List{Autodesk.DesignScript.Geometry.Vector})">
             <summary>
             Sort vectors by directionality about arbitrary pole.
@@ -77,14 +102,6 @@
             </summary>
             <param name="csList">Coordinate systems to test</param>
             <param name="guide">Guide vector</param>
-            <param name="tolerance">Angular tolerance (degrees)</param>
-            <returns></returns>
-        </member>
-        <member name="M:Dynamo_TORO.WIP_ROBARCH.testAngular2_Plane(System.Collections.Generic.List{Autodesk.DesignScript.Geometry.Plane},System.Double)">
-            <summary>
-            Test plane normals against each other and angular tolerance.
-            </summary>
-            <param name="planeList">Planes to test</param>
             <param name="tolerance">Angular tolerance (degrees)</param>
             <returns></returns>
         </member>
