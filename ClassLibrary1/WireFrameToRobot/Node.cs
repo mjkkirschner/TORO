@@ -17,19 +17,28 @@ namespace WireFrameToRobot
         AllNodesOrientedToWorldXYZ, AllNodesSameAsBaseGeo, AverageStrutsVector, OrientationProvided
     }
 
-    public class Node: ILabelAble
+    public class Node: ILabelAble,IDisposable
     {
 
         public Point Center { get; private set; }
         public Solid NodeGeometry { get
             {
-                var struts = this.Struts.Select(x => x.StrutGeometry);
-                var output = this.OrientedNodeGeometry.DifferenceAll(struts);
-               foreach(var strut in struts)
+                var strutsgeo = this.Struts.Select(x => x.StrutGeometry);
+
+                var accum = this.OrientedNodeGeometry.Translate(0,0,0) as Solid;
+                Solid next;
+                foreach (var strutgeo in strutsgeo)
+                {
+                    next = accum.Difference(strutgeo);
+                    accum.Dispose();
+                    accum = next;
+                }
+
+               foreach(var strut in strutsgeo)
                 {
                     strut.Dispose();
                 }
-                return output;
+                return accum;
 
             }
         }
@@ -42,7 +51,16 @@ namespace WireFrameToRobot
         /// <summary>
         /// gets the holder face of the node - this is assumed to be the top most surface of the node before orientation occurs
         /// </summary>
-        public Surface HolderFace { get { return holderFacePreTransform.Transform(OrientedNodeGeometry.ContextCoordinateSystem) as Surface; } }
+        public Surface HolderFace
+        {
+            get
+            {
+                var orientation = OrientedNodeGeometry.ContextCoordinateSystem;
+                var output = holderFacePreTransform.Transform(orientation) as Surface;
+                orientation.Dispose();
+                return output;
+            }
+        }
         public Solid holderRep
         {
             get
@@ -202,22 +220,51 @@ namespace WireFrameToRobot
             {
                 case OrientationStrategy.AllNodesOrientedToWorldXYZ:
 
+                    var plane = Plane.ByOriginNormal(Center, Vector.ZAxis());
+                    var newCs = CoordinateSystem.ByPlane(plane);
+
+                    var output = originalGeometry.Transform(newCs) as Solid;
+                    plane.Dispose();
+                    newCs.Dispose();
+
+                    return output;
                     break;
+
                 case OrientationStrategy.AllNodesSameAsBaseGeo:
 
+                    var orgCs = originalGeometry.ContextCoordinateSystem;
+                     plane = Plane.ByOriginNormal(Center,orgCs.ZAxis);
+                     newCs = CoordinateSystem.ByPlane(plane);
+
+                     output = originalGeometry.Transform(newCs) as Solid;
+                    plane.Dispose();
+                    newCs.Dispose();
+                    orgCs.Dispose();
+
+                    return output;
                     break;
 
                 case OrientationStrategy.AverageStrutsVector:
 
                     //orient the cube based on the average normal of the incoming struts
-                    var averageNorm = averageVector(struts.Select(x => Vector.ByTwoPoints(x.LineRepresentation.StartPoint, x.LineRepresentation.EndPoint)).ToList());
+                    var spoints = struts.Select(x => x.LineRepresentation.StartPoint).ToList();
+                    var epoints = struts.Select(x => x.LineRepresentation.EndPoint).ToList();
+                    var vectors = spoints.Zip(epoints, (x, y) => Vector.ByTwoPoints(x, y)).ToList();
+                    var averageNorm = averageVector(vectors);
+                    var revd = averageNorm.Reverse();
                     //reverse the normal so the top face is correct
-                    var plane = Plane.ByOriginNormal(Center, averageNorm.Reverse());
-                    var newCs = CoordinateSystem.ByPlane(plane);
+                     plane = Plane.ByOriginNormal(Center, revd);
+                     newCs = CoordinateSystem.ByPlane(plane);
                    
-                    var output = originalGeometry.Transform(newCs) as Solid;
+                     output = originalGeometry.Transform(newCs) as Solid;
                     plane.Dispose();
                     newCs.Dispose();
+                    spoints.ForEach(x => x.Dispose());
+                    epoints.ForEach(x => x.Dispose());
+                    vectors.ForEach(x => x.Dispose());
+                    averageNorm.Dispose();
+                    revd.Dispose();
+
 
                     return output;
 
@@ -237,11 +284,17 @@ namespace WireFrameToRobot
         private Vector averageVector(List<Vector> vectors)
         {
             var sum = Vector.ByCoordinates(0, 0, 0);
+            Vector next;
             foreach (var vector in vectors)
             {
-                sum = sum.Add(vector);
+                next = sum.Add(vector);
+                sum.Dispose();
+                sum = next;
+              
             }
-            return sum.Scale(1.0 / vectors.Count);
+            var output = sum.Scale(1.0 / vectors.Count);
+            sum.Dispose();
+            return output;
         }
 
         private Line pointAway(Point point, Line line)
@@ -249,6 +302,7 @@ namespace WireFrameToRobot
             if (line.EndPoint.IsAlmostEqualTo(point))
             {
                 var output = line.Reverse() as Line;
+                output.Tags.AddTag("dispose", true);
                 return output ;
             }
             return line;
@@ -286,6 +340,7 @@ namespace WireFrameToRobot
                 //iterate each nodes subStruts
                 foreach (var strut in node.Struts)
                 {
+                    //(TODO mike replace with hashset//
                     //if we have never seen this strut, then add it to the list of seen struts
                     if ((seenStruts.All(x => !strut.LineRepresentation.SameLine(x.LineRepresentation))))
                     {
@@ -311,6 +366,14 @@ namespace WireFrameToRobot
             }
 
             return output;
+        }
+
+        public void Dispose()
+        {
+            this.OrientedNodeGeometry.Dispose();
+            this.holderFacePreTransform.Dispose();
+            this.Struts.ForEach(x => x.Dispose());
+
         }
     }
 
