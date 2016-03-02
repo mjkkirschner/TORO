@@ -5,6 +5,8 @@ VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DYNAMO_TORO", "ClassLibrary1\DYNAMO_TORO.csproj", "{75693C00-F591-4C92-BBB6-06FEA6587376}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WireFrameToRobot", "WireFrameToRobot\WireFrameToRobot.csproj", "{AE48041C-739C-4609-9830-2649147EDFED}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{75693C00-F591-4C92-BBB6-06FEA6587376}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{75693C00-F591-4C92-BBB6-06FEA6587376}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{75693C00-F591-4C92-BBB6-06FEA6587376}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AE48041C-739C-4609-9830-2649147EDFED}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AE48041C-739C-4609-9830-2649147EDFED}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AE48041C-739C-4609-9830-2649147EDFED}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AE48041C-739C-4609-9830-2649147EDFED}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
