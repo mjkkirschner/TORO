@@ -96,7 +96,7 @@ namespace WireFrameToRobot
         /// <returns></returns>
         public static List<Node> ByPointsLinesAndGeoOrientationStrategy(List<Point> nodeCenters, List<Line> struts, double strutDiameter, Solid baseNode, OrientationStrategy nodeOrientationStrategy)
         {
-            var basestring = "A".ToCharArray();
+            int currentId = 1;
             //prune all duplicate inputs from wireframe
             var prunedPoints = Point.PruneDuplicates(nodeCenters);
             var prunedLines = GeometryExtensions.PruneDuplicates(struts);
@@ -107,7 +107,7 @@ namespace WireFrameToRobot
             {
                 //find adjacent struts for this node
                 var intersectingLines = findAdjacentLines(centerPoint, prunedLines);
-                var currentNode = new Node(new string(basestring), centerPoint, baseNode, intersectingLines, strutDiameter, nodeOrientationStrategy);
+                var currentNode = new Node("N"+currentId.ToString().PadLeft(4,'0'), centerPoint, baseNode, intersectingLines, strutDiameter, nodeOrientationStrategy);
                
                 //get the most z face and store it as the holder face
                 var surfaces = baseNode.Explode().OfType<Surface>().OrderBy(x => x.PointAtParameter(.5, .5).Z).ToList();
@@ -119,7 +119,7 @@ namespace WireFrameToRobot
 
                 //increment the string ID
                 var i = 0;
-                basestring[i] = (char)(basestring[i] + 1);
+                currentId = currentId + 1;
                 i++;
             }
            
@@ -136,7 +136,7 @@ namespace WireFrameToRobot
                 var indA = edge.GeometryEdges.First().OwnerNode.Struts.IndexOf(strutA);
                 var indB = edge.GeometryEdges.Last().OwnerNode.Struts.IndexOf(strutB);
 
-                var id = nodeA.ID + indA.ToString() + "_" + nodeB.ID + indB.ToString();
+                var id = nodeA.ID + 'S'+indA.ToString() + "_" + nodeB.ID + 'S'+indB.ToString();
 
                 //update each struts id to a combination of both nodes and the strut index
                 foreach (var strut in edge.GeometryEdges)
