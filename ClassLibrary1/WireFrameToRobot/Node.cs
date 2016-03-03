@@ -84,6 +84,46 @@ namespace WireFrameToRobot
             }
 
         }
+        /// <summary>
+        /// this method groups nodes by type defined by their cut planes within some tolerance
+        /// </summary>
+        /// <returns></returns>
+        public static List<List<Node>> FindNodeTypes(List<Node> nodesToGroup)
+        {
+            //create buckets of nodes based on strut number
+            var groups = nodesToGroup.GroupBy(x => x.Struts.Count);
+            //our output structure...almost, (TODO use dict after we implement has hash)
+            var nodeTypes = new List<Tuple<Node,List<Node>>>();
+
+            foreach(var group in groups)
+            {
+                foreach( var node in group)
+                {
+                    //if this type exists in the nodeTypes list, then we can just add our nodes
+                    var matchingTypes = nodeTypes.Where(x => SameNode(node, x.Item1));
+                    if (matchingTypes.Count() > 0)
+                    {
+                        //there should be only match
+                        matchingTypes.First().Item2.Add(node);
+                    }
+                    else
+                    {
+                        //we have not seen this type so add it
+                        nodeTypes.Add(Tuple.Create(node, new List<Node>()));
+                        
+                    }
+
+                }
+            }
+
+            return nodeTypes.Select(x => x.Item2).ToList();
+        }
+
+        private static bool SameNode(Node nodea,Node nodeb)
+        {
+            var nodebPlanes = nodeb.Struts.Select(x => x.TransformedCutPlane);
+            return nodea.Struts.Select(x => x.TransformedCutPlane).All(x => nodebPlanes.Any(y => x.IsAlmostEqualTo(y)));
+        }
 
         /// <summary>
         /// construct list of nodes from a list of points and lines, this method finds the struts that belong 
