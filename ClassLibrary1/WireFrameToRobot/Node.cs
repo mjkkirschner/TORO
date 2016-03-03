@@ -292,6 +292,10 @@ namespace WireFrameToRobot
                     var vectors = spoints.Zip(epoints, (x, y) => Vector.ByTwoPoints(x, y)).ToList();
                     var averageNorm = averageVector(vectors);
                     var revd = averageNorm.Reverse();
+                    if (revd.IsAlmostEqualTo(Vector.ByCoordinates(0, 0, 0)))
+                        {
+                        revd = Vector.ByCoordinates(0,0,1);
+                    }
                     //reverse the normal so the top face is correct
                      plane = Plane.ByOriginNormal(Center, revd);
                      newCs = CoordinateSystem.ByPlane(plane);
