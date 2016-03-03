@@ -18,6 +18,129 @@ namespace Dynamo_TORO
 
 
         /// <summary>
+        /// Create geometry representation of tool.
+        /// </summary>
+        /// <param name="frame">Tool frame at drill tip</param>
+        /// <returns></returns>
+        [MultiReturn(new[] { "model" })]
+        private static Solid vis_tool(Plane frame)
+        {
+            List<Solid> model = new List<Solid>();
+            CoordinateSystem cs = CoordinateSystem.ByPlane(frame);
+            Vector x = frame.XAxis;
+            Vector y = frame.YAxis;
+            Vector z = frame.Normal.Reverse();
+            double h = frame.Origin.Z;
+
+            Solid bit0 = Cone.ByCoordinateSystemHeightRadii(cs.Translate(z, 2), 2, 3, 0.1);
+            Solid bit1 = Cone.ByCoordinateSystemHeightRadii(cs.Translate(z, 68 + 2), 68, 3, 3);
+            Solid bit2 = Cone.ByCoordinateSystemHeightRadii(cs.Translate(z, 5 + 68 + 2), 5, 5, 5);
+            Solid bit3 = Cone.ByCoordinateSystemHeightRadii(cs.Translate(z, 5 + 5 + 68 + 2), 5, 4, 4);
+            Solid bod0 = Cone.ByCoordinateSystemHeightRadii(cs.Translate(z, 3 + 5 + 5 + 68 + 2), 3, 12, 12);
+            Solid bod1 = Cone.ByCoordinateSystemHeightRadii(cs.Translate(z, 80 + 3 + 5 + 5 + 68 + 2), 80, 24, 24);
+            Solid bod2 = Cone.ByCoordinateSystemHeightRadii(cs.Translate(z, 80 + 80 + 3 + 5 + 5 + 68 + 2), 80, 34, 34);
+            Solid bod3 = Cuboid.ByLengths(cs.Translate(z, 40 + 80 + 3 + 5 + 5 + 68 + 2).Translate(y, 20), 40, 40, 40);
+            Solid leg0 = Cone.ByCoordinateSystemHeightRadii(cs.Translate(z, h).Translate(x, 40).Translate(y, 40), h - (80 + 3 + 5 + 5 + 68 + 2), 4, 4);
+            Solid leg1 = Cone.ByCoordinateSystemHeightRadii(cs.Translate(z, h).Translate(x, 40).Translate(y, -40), h - (80 + 3 + 5 + 5 + 68 + 2), 4, 4);
+            Solid leg2 = Cone.ByCoordinateSystemHeightRadii(cs.Translate(z, h).Translate(x, -40).Translate(y, -40), h - (80 + 3 + 5 + 5 + 68 + 2), 4, 4);
+            Solid leg3 = Cone.ByCoordinateSystemHeightRadii(cs.Translate(z, h).Translate(x, -40).Translate(y, 40), h - (80 + 3 + 5 + 5 + 68 + 2), 4, 4);
+            Solid box0 = Cuboid.ByLengths(cs.Translate(z, 3 + 80 + 3 + 5 + 5 + 68 + 2), 96, 96, 10);
+            Solid box1 = Cuboid.ByLengths(cs.Translate(z, h - 5), 96, 96, 10);
+            model.Add(bit0);
+            model.Add(bit1);
+            model.Add(bit2);
+            model.Add(bit3);
+            model.Add(bod0);
+            model.Add(bod1);
+            model.Add(bod2);
+            model.Add(bod3);
+            model.Add(leg0);
+            model.Add(leg1);
+            model.Add(leg2);
+            model.Add(leg3);
+            model.Add(box0);
+            model.Add(box1);
+
+            Solid solid = Solid.ByUnion(model);
+            return solid;
+        }
+
+        /// <summary>
+        /// Create geometry representation of wobj.
+        /// </summary>
+        /// <param name="frame">Wobj frame at cube centroid</param>
+        /// <returns></returns>
+        [MultiReturn(new[] { "model" })]
+        private static Solid vis_wobj(Plane frame)
+        {
+            List<Solid> model = new List<Solid>();
+            CoordinateSystem cs = CoordinateSystem.ByPlane(frame);
+            Vector z = frame.Normal.Reverse();
+            double h = frame.Origin.Z;
+
+            //Solid cube = Cuboid.ByLengths(cs, 40, 40, 40);
+            Solid chu0 = Cylinder.ByCoordinateSystemHeightRadii(cs.Translate(cs.ZAxis.Reverse(), 2 + 20), 2, 10, 10);
+            Solid bod0 = Cylinder.ByCoordinateSystemHeightRadii(cs.Translate(cs.ZAxis.Reverse(), 18 + 2 + 20), 18, 22, 22);
+            Solid bod1 = Cuboid.ByLengths(cs.Translate(z, h - 18 - (h - 18 - 18 - 2 - 20) / 2), 46, 46, h - 18 - 18 - 2 - 20);
+            Solid bod2 = Cylinder.ByCoordinateSystemHeightRadii(cs.Translate(z, h), 18, 22, 22);
+
+            //model.Add(cube);
+            model.Add(chu0);
+            model.Add(bod0);
+            model.Add(bod1);
+            model.Add(bod2);
+
+            Solid solid = Solid.ByUnion(model);
+            return solid;
+        }
+
+        /// <summary>
+        /// Create geometry representation of targets using wobj and tool.
+        /// </summary>
+        /// <param name="holeFrames">List of target frames</param>
+        /// <param name="blockFrame">Wobj frame</param>
+        /// <param name="drillFrame">Tool frame</param>
+        /// <param name="nodeIndex">Index of node</param>
+        /// <param name="poseIndex">Index of pose</param>
+        /// <returns></returns>
+        [MultiReturn(new[] { "tool", "wobj", "block", "csys" })]
+        public static Dictionary<string, Object> vis_transform(List<List<Plane>> holeFrames, Plane blockFrame, Plane drillFrame, int nodeIndex = 0, int poseIndex = 0)
+        {
+            List<Object> outputTool = new List<Object>();
+            List<Object> outputWobj = new List<Object>();
+            List<Object> outputBloc = new List<Object>();
+            List<Object> outputCSys = new List<Object>();
+
+            Solid wobj = vis_wobj(blockFrame);
+            Solid tool = vis_tool(drillFrame);
+            CoordinateSystem worldCS = CoordinateSystem.ByOrigin(0, 0, 0);
+            CoordinateSystem toolCS = CoordinateSystem.ByPlane(drillFrame);
+            CoordinateSystem wobjCS = CoordinateSystem.ByPlane(blockFrame);
+
+            Plane targ = holeFrames[nodeIndex][poseIndex];
+            CoordinateSystem targCS = CoordinateSystem.ByPlane(targ);
+            CoordinateSystem targCSTransformed = targCS.Transform(worldCS, toolCS);
+            Geometry wobjTransformed = wobj.Transform(wobjCS, targCSTransformed);
+
+            Edge[] blocTransformed = (Cuboid.ByLengths(targCSTransformed, 40, 40, 40).Edges);
+            foreach (Edge edge in blocTransformed) { outputBloc.Add(edge.CurveGeometry); }
+
+            outputTool.Add((Object)tool);
+            outputWobj.Add((Object)wobjTransformed);
+            outputCSys.Add((Object)targCSTransformed);
+
+            return new Dictionary<string, Object>
+            {
+                { "tool", outputTool },
+                { "wobj", outputWobj },
+                { "block", outputBloc },
+                { "csys", outputCSys }
+            };
+        }
+
+
+
+        /// <summary>
         /// Sort vectors by directionality about arbitrary pole.
         /// </summary>
         /// <param name="vecList"></param>
@@ -445,6 +568,44 @@ namespace Dynamo_TORO
         }
 
 
+        /*
+        /// <summary>
+        /// Test plane normals each other and angular tolerance.
+        /// </summary>
+        /// <param name="planeList">Planes to test</param>
+        /// <param name="tolerance">Angular tolerance (degrees)</param>
+        /// <returns></returns>
+        [MultiReturn(new[] { "passed", "failed" })]
+        public static Dictionary<string, List<Plane>> testAngular2_Plane(List<Plane> planeList, double tolerance = 15)
+        {
+            List<Plane> passed = new List<Plane>();
+            List<Plane> failed = new List<Plane>();
+            List<int> indices = new List<int>();
+            List<Vector> normals = planeList.Select(p => p.Normal).ToList();
+
+            foreach (Plane p in planeList)
+            {
+                for (int i = 0; i < normals.Count(); i++)
+                {
+                    double dot = p.Normal.Dot(normals[i]);
+                    double angle = Math.Acos(dot) * (180 / Math.PI);
+                    if (angle > tolerance)
+                    {
+                        failed.Add(p);
+                    }
+                    else
+                    {
+                        passed.Add(p);
+                    }
+                }
+            }
+            return new Dictionary<string, List<Plane>>
+            {
+                {"passed", passed},
+                {"failed", failed}
+            };
+        }
+        */
 
 
 
@@ -608,13 +769,12 @@ namespace Dynamo_TORO
 
 
 
-        private static string Tool(Plane p)
-        {
-            List<double> q = Utilities.QuatListAtPlane(p);
-            Point o = p.Origin;
-            string t = "[TRUE, [[" + o.X + "," + o.Y + "," + o.Z + "], [" + q[0] + "," + q[1] + "," + q[2] + "," + q[3] + "]], [1,[0,0,0.001],[1,0,0,0],0,0,0]]";
-            return t;
-        }
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
 
 
 
@@ -627,44 +787,12 @@ namespace Dynamo_TORO
             return t;
         }
 
-
-
         private static string WobjRobHold(Plane p, bool r)
         {
             List<double> q = Utilities.QuatListAtPlane(p);
             Point o = p.Origin;
             string rB = r.ToString().ToUpper();
             string w = "[" + rB + ", " + rB + ", \"\", [[" + o.X + "," + o.Y + "," + o.Z + "], [" + q[0] + "," + q[1] + "," + q[2] + "," + q[3] + "]], [[0,0,0], [1,0,0,0]]]";
-            return w;
-        }
-
-        private static string Wobj(Plane p)
-        {
-            List<double> q = Utilities.QuatListAtPlane(p);
-            Point o = p.Origin;
-            string w = "[FALSE,TRUE,\"\", [[" + o.X + "," + o.Y + "," + o.Z + "], [" + q[0] + "," + q[1] + "," + q[2] + "," + q[3] + "]], [[0,0,0.001], [1,0,0,0]]]";
-            return w;
-        }
-
-
-
-        private static string WobjOU(Plane pO, Plane pU)
-        {
-            Point oO = pO.Origin;
-            Point oU = pU.Origin;
-            List<double> qO = Utilities.QuatListAtPlane(pO);
-            List<double> qU = Utilities.QuatListAtPlane(pU);
-            string w = "[TRUE, TRUE, \"\", [[" + oO.X + "," + oO.Y + "," + oO.Z + "], [" + qO[0] + "," + qO[1] + "," + qO[2] + "," + qO[3] + "]], [[" + oU.X + "," + oU.Y + "," + oU.Z + "], [" + qU[0] + "," + qU[1] + "," + qU[2] + "," + qU[3] + "]]]";
-            return w;
-        }
-
-
-
-        private static string WobjOU2(Plane pU, double offset)
-        {
-            Point oU = pU.Origin;
-            List<double> qU = Utilities.QuatListAtPlane(pU);
-            string w = "[TRUE, TRUE, \"\", [[0,0,0], [1,0,0,0]], [[" + oU.X + "," + oU.Y + "," + Math.Abs(offset) + "], [" + qU[0] + "," + qU[1] + "," + qU[2] + "," + qU[3] + "]]]";
             return w;
         }
 
@@ -677,14 +805,21 @@ namespace Dynamo_TORO
             return target;
         }
 
-
-
         private static string jtarget(double j0, double j1, double j2, double j3, double j4, double j5)
         {
             string target = string.Format(
                 "[[{0},{1},{2},{3},{4},{5}], [9E9,9E9,9E9,9E9,9E9,9E9]]", j0, j1, j2, j3, j4, j5);
             return target;
         }
+
+
+
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
 
 
 
@@ -727,18 +862,25 @@ namespace Dynamo_TORO
                 foreach (Plane hole in holes)
                 {
                     // create targets
-                    targBuilder.Append(string.Format("\n\tVAR robtarget p{0}0 := {1};", index, rtarget((Plane) hole.Translate(hole.Normal, -100))));
-                    targBuilder.Append(string.Format("\n\tVAR robtarget p{0}1 := {1};", index, rtarget((Plane) hole.Translate(hole.Normal, -30))));
-                    targBuilder.Append(string.Format("\n\tVAR robtarget p{0}2 := {1};", index, rtarget((Plane) hole.Translate(hole.Normal, 0))));
+                    targBuilder.Append(string.Format("\n\tVAR robtarget p{0}0 := {1};", index, rtarget((Plane)hole.Translate(hole.Normal, -120))));
+                    targBuilder.Append(string.Format("\n\tVAR robtarget p{0}1 := {1};", index, rtarget((Plane) hole.Translate(hole.Normal, -50))));
+                    targBuilder.Append(string.Format("\n\tVAR robtarget p{0}2 := {1};", index, rtarget((Plane) hole.Translate(hole.Normal, -10))));
 
                     // create movement instructions
                     moveBuilder.Append(string.Format("\n"));
                     moveBuilder.Append(string.Format("\n\t\tTPWrite(\"Drilling hole {0} of {1}!\");", index + 1, holes.Count()));
-                    moveBuilder.Append(string.Format("\n\t\tMoveL p{0}0, {1}, {2}, drill\\WObj:=block;", index, "v100", "z5"));
+                    moveBuilder.Append(string.Format("\n\t\tMoveL p{0}0, {1}, {2}, drill\\WObj:=block;", index, "v100", "z30"));
                     moveBuilder.Append(string.Format("\n\t\tMoveL p{0}1, {1}, {2}, drill\\WObj:=block;", index, "v100", "z5"));
                     moveBuilder.Append(string.Format("\n\t\tMoveL p{0}2, {1}, {2}, drill\\WObj:=block;", index, "rate", "fine"));
                     moveBuilder.Append(string.Format("\n\t\tMoveL p{0}1, {1}, {2}, drill\\WObj:=block;", index, "rate", "fine"));
-                    moveBuilder.Append(string.Format("\n\t\tMoveL p{0}0, {1}, {2}, drill\\WObj:=block;", index, "v100", "z5"));
+                    moveBuilder.Append(string.Format("\n\t\tMoveL p{0}0, {1}, {2}, drill\\WObj:=block;", index, "v100", "z30"));
+                    moveBuilder.Append(string.Format("\n\t\tMoveL RelTool(p{0}0, 0, 50, 0), {1}, {2}, drill\\WObj:=block;", index, "v100", "z5"));
+
+                    // create safe movement to next
+                    if (index < holes.Count() - 1)
+                    {
+                        moveBuilder.Append(string.Format("\n\t\tMoveAbsJ CalcJointT(RelTool(p{0}0, 0, 50, 0), drill\\WObj:=block), {1}, {2}, drill\\WObj:=block;", index + 1, "v100", "z5"));
+                    }
 
                     // update index
                     index += 1;
