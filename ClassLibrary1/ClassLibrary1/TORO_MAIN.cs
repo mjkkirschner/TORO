@@ -1092,34 +1092,6 @@ namespace Dynamo_TORO
         //////////////////////////////////////////////////////////////////////////
         //////////////////////////////////////////////////////////////////////////
 
-        /*
-        /// <summary>
-        /// Get individual quaternions from a plane.
-        /// </summary>
-        /// <param name="plane">The plane</param>
-        /// <returns></returns>
-        [MultiReturn(new[] { "q1", "q2", "q3", "q4" })]
-        public static Dictionary<string, double> QuatAtPlane([DefaultArgumentAttribute("Plane.ByOriginNormal(Point.ByCoordinates(0,0,0),Vector.ByCoordinates(0,0,1))")] Plane plane)
-        {
-            List<double> quats = new List<double>();
-
-            if (plane != null)
-            {
-                List<double> quatDoubles = RobotUtils.PlaneToQuaternian(plane);
-                quats.Add(quatDoubles[0]);
-                quats.Add(quatDoubles[1]);
-                quats.Add(quatDoubles[2]);
-                quats.Add(quatDoubles[3]);
-            }
-            return new Dictionary<string, double>
-        {
-            {"q1", quats[0]},
-            {"q2", quats[1]},
-            {"q3", quats[2]},
-            {"q4", quats[3]}
-            };
-        }
-        */
 
         /// <summary>
         /// Get list of quaternions from a plane.

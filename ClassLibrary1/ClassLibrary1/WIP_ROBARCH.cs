@@ -5,6 +5,7 @@ using System.Text;
 using System.Linq;
 using Autodesk.DesignScript.Geometry;
 using Autodesk.DesignScript.Runtime;
+using WireFrameToRobot;
 
 namespace Dynamo_TORO
 {
@@ -746,7 +747,7 @@ namespace Dynamo_TORO
         /// Test plane normals against guide vector using angular tolerance.
         /// </summary>
         /// <param name="planeList">Planes to test</param>
-        /// <param name="guide">Guide vector</param>
+        /// <param name="guide">Guide vector (Default: World -ZAxis)</param>
         /// <param name="tolerance">Angular tolerance (degrees)</param>
         /// <returns></returns>
         [MultiReturn(new[] { "passed", "failed" })]
@@ -781,7 +782,7 @@ namespace Dynamo_TORO
         /// Test coordinate system Z-axes against guide vector using angular tolerance.
         /// </summary>
         /// <param name="csList">Coordinate systems to test</param>
-        /// <param name="guide">Guide vector</param>
+        /// <param name="guide">Guide vector (Default: World -ZAxis)</param>
         /// <param name="tolerance">Angular tolerance (degrees)</param>
         /// <returns></returns>
         [MultiReturn(new[] { "passed", "failed" })]
@@ -809,6 +810,65 @@ namespace Dynamo_TORO
                 {"failed", failed}
             };
         }
+
+
+
+        /// <summary>
+        /// Test strut normals of nodes against guide vector using angular tolerance.
+        /// </summary>
+        /// <param name="nodeList">List of nodes to test</param>
+        /// <param name="guide">Guide vector (Default: World +ZAxis)</param>
+        /// <param name="tolerance">Angular tolerance (degrees)</param>
+        /// <returns></returns>
+        [MultiReturn(new[] { "passedNodes", "failedNodes", "passedStruts", "failedStruts" })]
+        public static Dictionary<string, Object> testAngular1_Node(List<Node> nodeList, [DefaultArgumentAttribute("{Vector.ByCoordinates(0,0,1)}")] Vector guide, double tolerance = 120)
+        {
+            List<Node> passedNodes = new List<Node>();
+            List<Node> failedNodes = new List<Node>();
+            List<List<Strut>> passedStrutsList = new List<List<Strut>>();
+            List<List<Strut>> failedStrutsList = new List<List<Strut>>();
+
+            foreach (Node node in nodeList)
+            {
+                List<Strut> passedStruts = new List<Strut>();
+                List<Strut> failedStruts = new List<Strut>();
+                foreach (Strut s in node.Struts)
+                {
+                    Plane p = s.TransformedCutPlane;
+                    double dot = p.Normal.Dot(guide);
+                    double angle = Math.Acos(dot) * (180 / Math.PI);
+                    if (angle > tolerance)
+                    {
+                        failedStruts.Add(s);
+                    }
+                    else
+                    {
+                        passedStruts.Add(s);
+                    }
+                }
+
+                passedStrutsList.Add(passedStruts);
+                failedStrutsList.Add(failedStruts);
+
+                if (failedStruts.Count() > 0)
+                {
+                    failedNodes.Add(node);
+                }
+                else
+                {
+                    passedNodes.Add(node);
+                }
+            }
+
+            return new Dictionary<string, Object>
+            {
+                {"passedNodes", passedNodes },
+                {"failedNodes", failedNodes },
+                {"passedStruts", passedStrutsList},
+                {"failedStruts", failedStrutsList}
+            };
+        }
+
 
 
         /// <summary>
@@ -896,9 +956,71 @@ namespace Dynamo_TORO
 
 
         /// <summary>
+        /// Test strut normals of node against each other using angular tolerance.
+        /// </summary>
+        /// <param name="nodeList">List of nodes to test</param>
+        /// <param name="tolerance">Angular tolerance (degrees)</param>
+        /// <returns></returns>
+        [MultiReturn(new[] { "passedNodes", "failedNodes", "passedStruts", "failedStruts" })]
+        public static Dictionary<string, Object> testAngular2_Node(List<Node> nodeList, double tolerance = 35)
+        {
+            List<Node> passedNodes = new List<Node>();
+            List<Node> failedNodes = new List<Node>();
+            List<List<Strut>> passedStrutsList = new List<List<Strut>>();
+            List<List<Strut>> failedStrutsList = new List<List<Strut>>();
+
+            foreach (Node node in nodeList)
+            {
+                List<Strut> passedStruts = new List<Strut>();
+                List<Strut> failedStruts = new List<Strut>();
+
+                List<Strut> strutList = node.Struts;
+                List<Vector> normals = strutList.Select(p => p.TransformedCutPlane.Normal).ToList();
+
+                for (int i = 0; i < strutList.Count(); i++)
+                {
+                    for (int j = 0; j < strutList.Count(); j++)
+                    {
+                        if (normals[i] != normals[j])
+                        {
+                            double dot = normals[i].Dot(normals[j]);
+                            double angle = Math.Acos(dot) * (180 / Math.PI);
+
+                            if (angle < tolerance && !failedStruts.Contains(strutList[i]))
+                            {
+                                failedStruts.Add(strutList[i]);
+                            }
+                        }
+                    }
+                }
+
+                passedStruts = strutList.Except(failedStruts).ToList();
+
+                if (failedStruts.Count > 0)
+                {
+                    failedNodes.Add(node);
+                }
+                else
+                {
+                    passedNodes.Add(node);
+                }
+            }
+
+            return new Dictionary<string, Object>
+            {
+                {"passedNodes", passedNodes },
+                {"failedNodes", failedNodes },
+                {"passedStruts", passedStrutsList},
+                {"failedStruts", failedStrutsList}
+            };
+        }
+
+
+
+        /// <summary>
         /// Aligns XAxis of plane to guide vector (default: World XAxis)
         /// </summary>
-        /// <param name="planeList">List of coordinate systems</param>
+        /// <param name="planeList">List of planes</param>
         /// <param name="vec">Alignment vector for XAxes</param>
         /// <param name="degree">Angle multiplier</param>
         /// <returns></returns>
@@ -939,6 +1061,40 @@ namespace Dynamo_TORO
             return newCSList;
         }
 
+
+        /*
+        /// <summary>
+        /// Aligns XAxis of strut frame on node to guide vector (default: World XAxis)
+        /// </summary>
+        /// <param name="nodeList">List of nodes</param>
+        /// <param name="vec">Alignment vector for XAxes</param>
+        /// <param name="degree">Angle multiplier</param>
+        /// <returns></returns>
+        public static List<Node> alignByXAxis_Node(List<Node> nodeList, [DefaultArgumentAttribute("{Vector.ByCoordinates(1,0,0)}")] Vector vec, double degree = 1)
+        {
+            //List<Node> newNodeList = new List<Node>();
+
+            foreach (Node node in nodeList)
+            {
+                List<Line> newLineList = new List<Line>();
+                foreach (Strut strut in node.Struts)
+                {
+                    Plane p = strut.TransformedCutPlane;
+                    double dot = p.XAxis.Dot(vec);
+                    double angle = Math.Acos(dot) * (-1) * degree * (180 / Math.PI);
+
+                    // rebuild node
+                    Line newLine = (Line) strut.LineRepresentation.Rotate(p.Origin, p.Normal, angle);
+                    newLineList.Add(newLine);
+                }
+
+                Node newNode = Node.ByPointsLinesAndGeoOrientationStrategy(node.Center, newLineList, 6, node.NodeGeometry);
+                newNodeList.Add(newNode);
+            }
+
+            return nodeList;
+        }
+        */
 
 
         /// <summary>
@@ -1332,6 +1488,106 @@ namespace Dynamo_TORO
             };
         }
 
+
+        
+
+        /// <summary>
+        /// Create routine for an ABB robot with stationary drill and mobile workpiece.
+        /// </summary>
+        /// <param name="directory">Directory to write files ("C:\")</param>
+        /// <param name="nodes">A list of all your favorite nodes \m| </param>
+        /// <returns></returns>
+        [MultiReturn(new[] { "filePaths" })]
+        public static Dictionary<string, List<string>> createDrillRoutine3(string directory, List<Node> nodes)
+        {
+            // create list of filenames
+            List<string> outputFiles = new List<string>();
+
+            // begin main
+            foreach (Node node in nodes)
+            {
+                // name files
+                string filename = string.Format("{0}\\{1}.prg", directory, node.ID.ToString());
+                outputFiles.Add(filename);
+
+                // setup  sub
+                int index = 0;
+                var targBuilder = new StringBuilder();
+                var moveBuilder = new StringBuilder();
+                targBuilder.Append(string.Format("\n\tVAR jointtarget j0 := {0};", jtarget(-90, 0, 0, 90, 90, 0)));
+                targBuilder.Append(string.Format("\n\tVAR jointtarget j1 := {0};", jtarget(-41, 0, 0, 0, 90, 0)));
+                foreach (Strut strut in node.Struts)
+                {
+                    // setup names
+                    Plane hole = strut.TransformedCutPlane;
+                    string name = strut.ID;
+
+                    // create targets
+                    targBuilder.Append(string.Format("\n\tVAR robtarget p{0}0 := {1};", index, rtarget((Plane)hole.Translate(hole.Normal, -120))));
+                    targBuilder.Append(string.Format("\n\tVAR robtarget p{0}1 := {1};", index, rtarget((Plane)hole.Translate(hole.Normal, -50))));
+                    targBuilder.Append(string.Format("\n\tVAR robtarget p{0}2 := {1};", index, rtarget((Plane)hole.Translate(hole.Normal, -10))));
+
+                    // create movement instructions
+                    moveBuilder.Append(string.Format("\n"));
+                    moveBuilder.Append(string.Format("\n\t\tTPWrite(\"Drilling hole for strut {0}! ({1}/{2})\");", name, index + 1, node.Struts.Count()));
+                    moveBuilder.Append(string.Format("\n\t\tMoveL p{0}0, {1}, {2}, drill\\WObj:=block;", index, "v200", "z30"));
+                    moveBuilder.Append(string.Format("\n\t\tMoveL p{0}1, {1}, {2}, drill\\WObj:=block;", index, "v100", "z5"));
+                    moveBuilder.Append(string.Format("\n\t\tMoveL p{0}2, {1}, {2}, drill\\WObj:=block;", index, "rate", "fine"));
+                    moveBuilder.Append(string.Format("\n\t\tMoveL p{0}1, {1}, {2}, drill\\WObj:=block;", index, "rate", "fine"));
+                    moveBuilder.Append(string.Format("\n\t\tMoveL p{0}0, {1}, {2}, drill\\WObj:=block;", index, "v100", "z5"));
+                    moveBuilder.Append(string.Format("\n\t\tMoveL RelTool(p{0}0, 0, 50, 0), {1}, {2}, drill\\WObj:=block;", index, "v200", "z30"));
+
+                    // create safe movement to next
+                    if (index < node.Struts.Count() - 1)
+                    {
+                        moveBuilder.Append(string.Format("\n\t\tMoveAbsJ CalcJointT(RelTool(p{0}0, 0, 50, 0), drill\\WObj:=block), {1}, {2}, drill\\WObj:=block;", index + 1, "v200", "z5"));
+                    }
+
+                    // update index
+                    index += 1;
+                }
+
+                // create rapid
+                string r = "";
+                using (var tw = new StreamWriter(filename, false))
+                {
+                    r =
+                        "MODULE MainModule" +
+                        "\n" +
+                        "\n\t" + "! " + node.ID.ToString() +
+                        "\n" +
+                        "\n\t" + "! targets" + targBuilder.ToString() +
+                        "\n" +
+                        "\n\t" + "! drilling instructions" +
+                        "\n\t" + "PROC main()" +
+                        "\n\t\t" + "ConfL\\Off;" +
+                        "\n\t\t" + "SingArea\\Wrist;" +
+                        "\n" +
+                        "\n\t\t" + "TPWrite(\"This is: " + node.ID.ToString() + "\");" +
+                        "\n\t\t" + "TPWrite(\"Check block and drill\");" +
+                        "\n\t\t" + "MoveAbsJ j0, v100, z5, tool0;" +
+                        "\n\t\t" + "MoveAbsJ j1, v100, z5, tool0;" + moveBuilder.ToString() +
+                        "\n\n\t\t" + "TPWrite(\"Resetting axes...\");" +
+                        "\n\t\t" + "MoveAbsJ j1, v100, z5, tool0;" +
+                        "\n\t\t" + "MoveAbsJ j0, v100, z5, tool0;" +
+                        "\n" +
+                        "\n\t\t" + "Stop;" +
+                        "\n\t" + "ENDPROC" +
+                        "\n" +
+                        "\n" + "ENDMODULE"
+                        ;
+
+                    tw.Write(r);
+                    tw.Flush();
+                }
+            }
+
+            // end step
+            return new Dictionary<string, List<string>>
+            {
+                {"filePaths", outputFiles}
+            };
+        }
 
 
 
