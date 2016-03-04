@@ -11,7 +11,9 @@ using WireFrameToRobot;
 
 namespace WireFrameToRobot
 {
-
+    /// <summary>
+    /// a strategy for orientation of the node
+    /// </summary>
     public enum OrientationStrategy
     {
         AllNodesOrientedToWorldXYZ, AllNodesSameAsBaseGeo, AverageStrutsVector, OrientationProvided
@@ -19,8 +21,14 @@ namespace WireFrameToRobot
 
     public class Node: ILabelAble,IDisposable
     {
-
+        /// <summary>
+        /// the center of the node
+        /// </summary>
         public Point Center { get; private set; }
+        /// <summary>
+        /// the fully differenced geometry of the node oriented in space 
+        /// with the struts subtracted out
+        /// </summary>
         public Solid NodeGeometry { get
             {
                 var strutsgeo = this.Struts.Select(x => x.StrutGeometry).ToList();
@@ -32,11 +40,21 @@ namespace WireFrameToRobot
 
             }
         }
-
+        /// <summary>
+        /// a list of strut objects that belong to this node
+        /// these objects wont be unique if this method is run on
+        /// two nodes that share a strut, that strut will be retrieved twice.
+        /// </summary>
         public List<Strut> Struts { get; private set; }
+        /// <summary>
+        /// the ID of the node is a simple number with the prefix N
+        /// </summary>
         public string ID { get; private set; }
 
         private Solid originalGeometry;
+        /// <summary>
+        /// the node geometry oriented in space, but before any boolean operations
+        /// </summary>
         public Solid OrientedNodeGeometry { get; private set; }
         /// <summary>
         /// gets the holder face of the node - this is assumed to be the top most surface of the node before orientation occurs
@@ -51,6 +69,9 @@ namespace WireFrameToRobot
                 return output;
             }
         }
+        /// <summary>
+        /// a simple representation of the holder - can be used as a reference point
+        /// </summary>
         public Solid holderRep
         {
             get
@@ -81,7 +102,7 @@ namespace WireFrameToRobot
 
        
         /// <summary>
-        /// this method groups nodes by type defined by their cut planes within some tolerance
+        /// this method groups nodes by type defined by their cut planes
         /// </summary>
         /// <returns></returns>
         public static List<List<Node>> FindNodeTypes(List<Node> nodesToGroup)
@@ -115,7 +136,12 @@ namespace WireFrameToRobot
             return nodeTypes.Select(x => x.Item2).ToList();
         }
 
-        public static List<List<Node>> FindNodeTypesUsingHash(List<Node> nodesToGroup)
+        /// <summary>
+        /// this method finds types of nodes by hashing their cut planes axes to 4 digits of tolerance
+        /// </summary>
+        /// <param name="nodesToGroup"></param>
+        /// <returns></returns>
+        public static List<List<Node>> FindNodeTypesUsingHash(List<Node> nodesToGroup, int digits = 4)
         {
             //create buckets of nodes based on strut number
             var groups = nodesToGroup.GroupBy(x => x.Struts.Count);
@@ -126,7 +152,7 @@ namespace WireFrameToRobot
             {
                 foreach (var node in group)
                 {
-                    var key = node.NodeTypeHash();
+                    var key = node.NodeTypeHash(digits);
                    if(nodeTypes.ContainsKey(key))
                     {
                         nodeTypes[key].Add(node);
@@ -134,7 +160,7 @@ namespace WireFrameToRobot
                     else
                     {
                         //we have not seen this type so add it
-                        nodeTypes.Add(node.NodeTypeHash(), new List<Node>() { node });
+                        nodeTypes.Add(node.NodeTypeHash(digits), new List<Node>() { node });
 
                     }
 
@@ -144,7 +170,12 @@ namespace WireFrameToRobot
             return nodeTypes.Select(x=>x.Value).ToList();
         }
 
-
+        /// <summary>
+        /// compares nodes for similarity by their planes
+        /// </summary>
+        /// <param name="nodea"></param>
+        /// <param name="nodeb"></param>
+        /// <returns></returns>
         private static bool SameNode(Node nodea,Node nodeb)
         {
             if(nodea.Struts.Count != nodeb.Struts.Count)
@@ -154,8 +185,11 @@ namespace WireFrameToRobot
             var nodebPlanes = nodeb.Struts.Select(x => x.TransformedCutPlane);
             return nodea.Struts.Select(x => x.TransformedCutPlane).All(x => nodebPlanes.Any(y => x.IsAlmostEqualTo(y)));
         }
-
-        private int NodeTypeHash()
+        /// <summary>
+        /// hash a node using the xor of their planes hash
+        /// </summary>
+        /// <returns></returns>
+        private int NodeTypeHash(int digits)
         {
             unchecked
             {
@@ -163,28 +197,33 @@ namespace WireFrameToRobot
                 foreach (var strut in Struts)
                 {
                     var plane = strut.TransformedCutPlane;
-                    hash = hash ^ PlaneTypeHash(plane);
+                    hash = hash ^ PlaneTypeHash(plane, digits);
                 }
                 return hash;
             }
         }
 
-        private static int PlaneTypeHash(Plane pln)
+        /// <summary>
+        /// hash a plane by its axes rounded to x digits
+        /// </summary>
+        /// <param name="pln"></param>
+        /// <returns></returns>
+        private static int PlaneTypeHash(Plane pln,int digits)
         {
             unchecked
             {
                 var hash = 13;
-                hash = (hash * 7) + VectorRoundedString(pln.XAxis).GetHashCode();
-                hash = (hash * 7) + VectorRoundedString(pln.YAxis).GetHashCode();
-                hash = (hash * 7) + VectorRoundedString(pln.Normal).GetHashCode();
+                hash = (hash * 7) + VectorRoundedString(pln.XAxis, digits).GetHashCode();
+                hash = (hash * 7) + VectorRoundedString(pln.YAxis, digits).GetHashCode();
+                hash = (hash * 7) + VectorRoundedString(pln.Normal, digits).GetHashCode();
 
                 return hash;
             }
         }
 
-        private static string VectorRoundedString(Vector vec)
+        private static string VectorRoundedString(Vector vec,int digits)
         {
-            return "X" + Math.Round(vec.X, 4).ToString() + "Y" + Math.Round(vec.X, 4).ToString() + "Z" + Math.Round(vec.X, 4).ToString();
+            return "X" + Math.Round(vec.X, digits).ToString() + "Y" + Math.Round(vec.X, digits).ToString() + "Z" + Math.Round(vec.X, digits).ToString();
         }
 
         /// <summary>

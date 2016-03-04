@@ -7,12 +7,32 @@ namespace WireFrameToRobot
 {
     public class Strut:ILabelAble,IDisposable
     {
+        /// <summary>
+        /// an ID generated based on the nodes this strut is connected to
+        /// </summary>
         public string ID { get; private set; }
+        /// <summary>
+        /// the line which represents this strut
+        /// </summary>
         public Line LineRepresentation { get; private set; }
+        /// <summary>
+        /// the node which this strut object belongs to
+        /// </summary>
         public Node OwnerNode { get; private set; }
+        /// <summary>
+        /// the diameter of the strut geometry
+        /// </summary>
         public double Diameter { get; private set; }
+        /// <summary>
+        /// a solid circular sweep along the line
+        /// </summary>
         public Solid StrutGeometry { get; private set; }
        
+        /// <summary>
+        /// get labels for the strut - showing its ID as geometry
+        /// </summary>
+        /// <param name="scale"></param>
+        /// <returns></returns>
         public List<Curve> GetLabels(double scale =30)
         {
             var label = new Label<Strut>(this, scale);
@@ -21,15 +41,34 @@ namespace WireFrameToRobot
             return output;
         }
 
+        /// <summary>
+        /// this plane represents the cut vector
+        /// </summary>
         private Plane CutPlane { get
             {
                 var coordinateSystemOnLine = LineRepresentation.CoordinateSystemAtParameter(0);
                 //reverse the normal because we want the plane normal to point towards the node
                 //TODO(mike + Nick) we need to verify this is correct
-                return Plane.ByOriginNormalXAxis(coordinateSystemOnLine.Origin,coordinateSystemOnLine.YAxis.Reverse(), coordinateSystemOnLine.ZAxis); }
+
+                var org = coordinateSystemOnLine.Origin;
+                var yaxis = coordinateSystemOnLine.YAxis;
+                var zaxis = coordinateSystemOnLine.ZAxis;
+                var yrev = yaxis.Reverse();
+
+                var output = Plane.ByOriginNormalXAxis(org, yrev, zaxis);
+                org.Dispose();
+                yaxis.Dispose();
+                zaxis.Dispose();
+                yrev.Dispose();
+                coordinateSystemOnLine.Dispose();
+
+                return output;
+                    }
         }
        
-
+        /// <summary>
+        /// get the cut plane after it has been transformed around the origin (using the inverse transform of its owner node)
+        /// </summary>
         public Plane TransformedCutPlane
         {
             get
@@ -51,6 +90,12 @@ namespace WireFrameToRobot
             }
         }
 
+        /// <summary>
+        /// construct a new strut object, this method computes the strut geometry and caches it on the strut
+        /// </summary>
+        /// <param name="line"></param>
+        /// <param name="diameter"></param>
+        /// <param name="owner"></param>
         public Strut(Line line, double diameter, Node owner)
         {
             LineRepresentation = line;
@@ -70,6 +115,10 @@ namespace WireFrameToRobot
             ID = id;
         }
 
+        /// <summary>
+        /// check if the cutplane normal angle is withing 30 degrees of the holder face of the node
+        /// </summary>
+        /// <returns></returns>
         public bool StrutInHolderExclusionZone()
         {
             var anglebetweenWorldZandCutPlaneZ = OwnerNode.HolderFace.NormalAtParameter(.5,.5).AngleBetween(CutPlane.Normal);
@@ -89,6 +138,10 @@ namespace WireFrameToRobot
             StrutGeometry.Dispose();
         }
 
+        /// <summary>
+        /// a hashcode based on the string of the start and end point
+        /// </summary>
+        /// <returns></returns>
         public int SpatialHash()
         {
             unchecked
@@ -106,6 +159,11 @@ namespace WireFrameToRobot.Extensions
 {
     public static class GeometryExtensions
     {
+        /// <summary>
+        /// prune duplicate lines by using start and endpoints to check for equality
+        /// </summary>
+        /// <param name="allLines"></param>
+        /// <returns></returns>
         public static IEnumerable<Line> PruneDuplicates (List<Line> allLines)
             {
             var output = new List<Line>();
@@ -125,6 +183,13 @@ namespace WireFrameToRobot.Extensions
 
             }
 
+        /// <summary>
+        /// checks equality between lines by checking if the start and endpoints match,
+        /// even if these are reversed this method return true.
+        /// </summary>
+        /// <param name="a"></param>
+        /// <param name="b"></param>
+        /// <returns></returns>
         public static bool SameLine (this Line a, Line b)
             {
             var astart = a.StartPoint;
