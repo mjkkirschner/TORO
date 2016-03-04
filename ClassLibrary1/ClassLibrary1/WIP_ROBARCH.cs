@@ -3,10 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Linq;
-using System.Threading.Tasks;
 using Autodesk.DesignScript.Geometry;
 using Autodesk.DesignScript.Runtime;
-using Dynamo_TORO;
 
 namespace Dynamo_TORO
 {
@@ -17,12 +15,21 @@ namespace Dynamo_TORO
     {
 
 
+
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+
+
+
         /// <summary>
         /// Create geometry representation of tool.
         /// </summary>
         /// <param name="frame">Tool frame at drill tip</param>
         /// <returns></returns>
-        [MultiReturn(new[] { "model" })]
         private static Solid vis_tool(Plane frame)
         {
             List<Solid> model = new List<Solid>();
@@ -46,6 +53,7 @@ namespace Dynamo_TORO
             Solid leg3 = Cone.ByCoordinateSystemHeightRadii(cs.Translate(z, h).Translate(x, -40).Translate(y, 40), h - (80 + 3 + 5 + 5 + 68 + 2), 4, 4);
             Solid box0 = Cuboid.ByLengths(cs.Translate(z, 3 + 80 + 3 + 5 + 5 + 68 + 2), 96, 96, 10);
             Solid box1 = Cuboid.ByLengths(cs.Translate(z, h - 5), 96, 96, 10);
+            
             model.Add(bit0);
             model.Add(bit1);
             model.Add(bit2);
@@ -65,12 +73,13 @@ namespace Dynamo_TORO
             return solid;
         }
 
+
+
         /// <summary>
         /// Create geometry representation of wobj.
         /// </summary>
         /// <param name="frame">Wobj frame at cube centroid</param>
         /// <returns></returns>
-        [MultiReturn(new[] { "model" })]
         private static Solid vis_wobj(Plane frame)
         {
             List<Solid> model = new List<Solid>();
@@ -94,6 +103,14 @@ namespace Dynamo_TORO
             return solid;
         }
 
+
+
+        // NOT WORKING
+        // NOT WORKING
+        // NOT WORKING
+        // NOT WORKING
+        // NOT WORKING
+
         /// <summary>
         /// Create geometry representation of targets using wobj and tool.
         /// </summary>
@@ -103,50 +120,118 @@ namespace Dynamo_TORO
         /// <param name="nodeIndex">Index of node</param>
         /// <param name="poseIndex">Index of pose</param>
         /// <returns></returns>
-        [MultiReturn(new[] { "tool", "wobj", "block", "csys" })]
-        public static Dictionary<string, Object> vis_transform(List<List<Plane>> holeFrames, Plane blockFrame, Plane drillFrame, int nodeIndex = 0, int poseIndex = 0)
+        [MultiReturn(new[] { "tool", "wobj", "block", "holes" })]
+        public static Dictionary<string, List<Object>> vis_transform2(List<List<Plane>> holeFrames, Plane blockFrame, Plane drillFrame, int nodeIndex = 0, int poseIndex = 0)
         {
+
+            // setup
             List<Object> outputTool = new List<Object>();
             List<Object> outputWobj = new List<Object>();
             List<Object> outputBloc = new List<Object>();
-            List<Object> outputCSys = new List<Object>();
+            List<Object> outputCSysHoles = new List<Object>();
 
+            // create wobj and tool solids
             Solid wobj = vis_wobj(blockFrame);
             Solid tool = vis_tool(drillFrame);
             CoordinateSystem worldCS = CoordinateSystem.ByOrigin(0, 0, 0);
             CoordinateSystem toolCS = CoordinateSystem.ByPlane(drillFrame);
+
+            // transform and translate targets on wobj to tool
+            List<Object> holeCSList = new List<Object>();
+            foreach (Plane hole in holeFrames[nodeIndex])
+            {
+                CoordinateSystem holeCS = CoordinateSystem.ByPlane(hole);
+                CoordinateSystem holeCSTransformed = holeCS.Transform(worldCS, toolCS);
+                CoordinateSystem holeCSTransformedTranslated = holeCSTransformed.Translate(holeCSTransformed.ZAxis.Reverse(), 10);
+                holeCSList.Add((Object) holeCSTransformedTranslated);
+            }
+
+            // transform wobj to target in tool space
             CoordinateSystem wobjCS = CoordinateSystem.ByPlane(blockFrame);
-
-            Plane targ = holeFrames[nodeIndex][poseIndex];
-            CoordinateSystem targCS = CoordinateSystem.ByPlane(targ);
-            CoordinateSystem targCSTransformed = targCS.Transform(worldCS, toolCS);
-            Geometry wobjTransformed = wobj.Transform(wobjCS, targCSTransformed);
-
-            Edge[] blocTransformed = (Cuboid.ByLengths(targCSTransformed, 40, 40, 40).Edges);
+            CoordinateSystem wobjCSTransformed = wobjCS.Transform(wobjCS, (CoordinateSystem) holeCSList[poseIndex]);
+            Geometry wobjTransformed = wobj.Transform(wobjCS, wobjCSTransformed);
+            
+            // create wireframe model of block
+            Edge[] blocTransformed = (Cuboid.ByLengths(wobjCSTransformed, 40, 40, 40).Edges);
             foreach (Edge edge in blocTransformed) { outputBloc.Add(edge.CurveGeometry); }
 
+            // output
             outputTool.Add((Object)tool);
             outputWobj.Add((Object)wobjTransformed);
-            outputCSys.Add((Object)targCSTransformed);
-
-            return new Dictionary<string, Object>
+            return new Dictionary<string, List<Object>>
             {
                 { "tool", outputTool },
                 { "wobj", outputWobj },
                 { "block", outputBloc },
-                { "csys", outputCSys }
+                { "holes", holeCSList }
             };
         }
 
+        // NOT WORKING
+        // NOT WORKING
+        // NOT WORKING
+        // NOT WORKING
+        // NOT WORKING
 
 
+
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+
+
+        /// <summary>
+        /// Sort points by directionality about arbitrary pole.
+        /// </summary>
+        /// <param name="pointList"></param>
+        /// <returns></returns>
+        [MultiReturn(new[] { "sorted", "indices" })]
+        public static Dictionary<string, List<Object>> sortPolar1_Point(List<Point> pointList)
+        {
+            List<double> angList = new List<double>();
+            List<Object> newList = new List<Object>();
+
+            foreach (Point p in pointList)
+            {
+                double x = p.X;
+                double y = p.Y;
+                double d = Math.Sqrt(Math.Pow(x, 2) + Math.Pow(y, 2));
+                double xnorm = x / d;
+                double ynorm = y / d;
+                double t = Math.Atan2(ynorm, xnorm);
+                if (y < 0) { t = t - 180; }
+                angList.Add(t);
+            }
+
+            var sortedAng = angList
+                .Select((x, i) => new KeyValuePair<int, int>((int)x, i))
+                .OrderBy(x => x.Key)
+                .ToList();
+
+            List<Object> indices = sortedAng.Select(x => (Object)x.Value).ToList();
+            foreach (int i in indices)
+            {
+                newList.Add(pointList[i]);
+            }
+            return new Dictionary<string, List<Object>>
+            {
+                {"sorted", newList},
+                {"indices", indices}
+            };
+        }
+
+        
+        
         /// <summary>
         /// Sort vectors by directionality about arbitrary pole.
         /// </summary>
         /// <param name="vecList"></param>
         /// <returns></returns>
         [MultiReturn(new[] { "sorted", "indices" })]
-        public static Dictionary<string, List<Object>> sortPolar_Vector(List<Vector> vecList)
+        public static Dictionary<string, List<Object>> sortPolar1_Vector(List<Vector> vecList)
         {
             List<double> angList = new List<double>();
             List<Object> newList = new List<Object>();
@@ -188,7 +273,7 @@ namespace Dynamo_TORO
         /// <param name="planeList">List of Planes</param>
         /// <returns></returns>
         [MultiReturn(new[] { "sorted", "indices" })]
-        public static Dictionary<string, List<Object>> sortPolar_Plane(List<Plane> planeList)
+        public static Dictionary<string, List<Object>> sortPolar1_Plane(List<Plane> planeList)
         {
             List<double> angList = new List<double>();
             List<Object> newList = new List<Object>();
@@ -230,7 +315,7 @@ namespace Dynamo_TORO
         /// <param name="csList">List of coordinate systems</param>
         /// <returns></returns>
         [MultiReturn(new[] { "sorted", "indices" })]
-        public static Dictionary<string, List<Object>> sortPolar_CoordSys(List<CoordinateSystem> csList)
+        public static Dictionary<string, List<Object>> sortPolar1_CoordSys(List<CoordinateSystem> csList)
         {
             List<double> angList = new List<double>();
             List<Object> newList = new List<Object>();
@@ -267,9 +352,56 @@ namespace Dynamo_TORO
 
 
 
+        /// <summary>
+        /// Sort points by directionality about average pole and shift.
+        /// </summary>
+        /// <param name="pointList">List of points</param>
+        /// <param name="shift">Shift value</param>
+        /// <returns></returns>
+        [MultiReturn(new[] { "sorted", "indices" })]
+        public static Dictionary<string, List<Object>> sortPolar2_Vector(List<Point> pointList, int shift = 0)
+        {
+            List<Object> newList = new List<Object>();
+            List<double> paramList = new List<double>();
+
+            List<double> vx = pointList.Select(p => p.X).ToList();
+            List<double> vy = pointList.Select(p => p.Y).ToList();
+            List<double> vz = pointList.Select(p => p.Z).ToList();
+
+            Vector vecAvg = Vector.ByCoordinates(vx.Average(), vy.Average(), vz.Average());
+            Circle guide = Circle.ByCenterPointRadiusNormal(Point.ByCoordinates(0, 0, 0), 1, vecAvg);
+            for (int i = 0; i < pointList.Count(); i++)
+            {
+                Point v = Point.ByCoordinates(vx[i], vy[i], vz[i]);
+                double param = guide.ParameterAtPoint(guide.ClosestPointTo(v));
+                paramList.Add(param);
+            }
+
+            var sortedParams = paramList
+                .Select((x, i) => new KeyValuePair<int, int>((int)x, i))
+                .OrderBy(x => x.Key)
+                .ToList();
+
+            List<Object> indices = sortedParams.Select(x => (Object)x.Value).ToList();
+            foreach (int i in indices) { newList.Add(pointList[i]); }
+
+            List<Object> shifted = new List<Object>();
+            if (shift < 0) { shift = newList.Count - shift % newList.Count - 1; }
+            if (Math.Abs(shift) >= newList.Count) { shift = shift % newList.Count; }
+            shifted = newList.GetRange(shift, newList.Count - shift);
+            shifted.AddRange(newList.GetRange(0, shift));
+
+            return new Dictionary<string, List<Object>>
+            {
+                {"sorted", shifted},
+                {"indices", indices},
+            };
+        }
+
+
 
         /// <summary>
-        /// Sort vectors directionality about average pole and shift.
+        /// Sort vectors by directionality about average pole and shift.
         /// </summary>
         /// <param name="vecList">List of vectors</param>
         /// <param name="shift">Shift value</param>
@@ -430,84 +562,195 @@ namespace Dynamo_TORO
 
 
 
-        /*
         /// <summary>
-        /// Create a set from only the unique items in a list of points, vectors, planes, or coordinate systems.
+        /// Get item at index in range 0 to 1.
         /// </summary>
-        /// <param name="listIn"></param>
+        /// <param name="lst">List of objects</param>
+        /// <param name="index">Index value from 0 to 1</param>
+        /// <returns></returns>
+        public static Object smartGetItem(List<Object> lst, double index = 0)
+        {
+            if (index == 1) { index = 0; }
+            int i = (int) (index * lst.Count());
+            Object item = lst[i];
+            return item;
+        }
+
+        
+
+        /// <summary>
+        /// Create a set from only the unique items in a list of points.
+        /// </summary>
+        /// <param name="points">List of points</param>
         /// <returns></returns>
         [MultiReturn(new[] { "passed", "failed" })]
-        public static Dictionary<string, List<Object>> getUnique(List<Object> listIn)
+        public static Dictionary<string, List<Point>> getUnique_Point(List<Point> points)
         {
-            List<Object> passed = new List<Object>();
-            List<Object> failed = new List<Object>();
+            List<Point> passed = new List<Point>();
+            List<Point> failed = new List<Point>();
+            List<double[]> checkList = new List<double[]>();
 
-            Type t = listIn.GetType().GetGenericArguments()[0];
-            bool b = typeof(Point).IsAssignableFrom(typeof(t));
-
-            switch (t.Name)
+            foreach (Point p in points)
             {
-                case "Point":
-                    List<Point> pts = listIn.Cast<Point>().ToList();
-                    List<Point> ptsDistinct = pts
-                      .GroupBy(pt => new { pt.X, pt.Y, pt.Z })
-                      .Select(g => g.First())
-                      .ToList();
-                    passed = ptsDistinct.Cast<Object>().ToList();
-                    failed = listIn.Except(passed).ToList();
-                    break;
-
-                case "Vector":
-                    List<Vector> vecs = listIn.Cast<Vector>().ToList();
-                    List<Vector> vecsDistinct = vecs
-                      .GroupBy(v => new { v.X, v.Y, v.Z })
-                      .Select(g => g.First())
-                      .ToList();
-                    passed = vecsDistinct.Cast<Object>().ToList();
-                    failed = listIn.Except(passed).ToList();
-                    break;
-
-                case "Plane":
-                    List<Plane> plns = listIn.Cast<Plane>().ToList();
-                    List<Plane> plnsDistinct = plns
-                      .GroupBy(pl => new { pl.Origin, pl.Normal, pl.XAxis })
-                      .Select(g => g.First())
-                      .ToList();
-                    passed = plnsDistinct.Cast<Object>().ToList();
-                    failed = listIn.Except(passed).ToList();
-                    break;
-
-                case "CoordinateSystem":
-                    List<CoordinateSystem> css = listIn.Cast<CoordinateSystem>().ToList();
-                    List<CoordinateSystem> cssDistinct = css
-                      .GroupBy(cs => new { cs.Origin, cs.ZAxis, cs.XAxis })
-                      .Select(g => g.First())
-                      .ToList();
-                    passed = cssDistinct.Cast<Object>().ToList();
-                    failed = listIn.Except(passed).ToList();
-                    break;
+                double[] check = new double[] { p.X, p.Y, p.Z };
+                check = check.Select(val => Math.Round(val, 4)).ToArray();
+                if (!checkList.Any(check.SequenceEqual))
+                {
+                    passed.Add(p);
+                    checkList.Add(check);
+                }
+                else
+                {
+                    failed.Add(p);
+                }
             }
 
-            failed.Add((Object) type.Name);
-            return new Dictionary<string, List<Object>>
+            return new Dictionary<string, List<Point>>
             {
                 {"passed", passed},
                 {"failed", failed}
             };
         }
-        */
 
 
 
         /// <summary>
-        /// Test plane normals against guide vector and angular tolerance.
+        /// Create a set from only the unique items in a list of vectors.
+        /// </summary>
+        /// <param name="vectors">List of vectors</param>
+        /// <returns></returns>
+        [MultiReturn(new[] { "passed", "failed" })]
+        public static Dictionary<string, List<Vector>> getUnique_Vector(List<Vector> vectors)
+        {
+            List<Vector> passed = new List<Vector>();
+            List<Vector> failed = new List<Vector>();
+            List<double[]> checkList = new List<double[]>();
+
+            foreach (Vector v in vectors)
+            {
+                double[] check = new double[] { v.X, v.Y, v.Z };
+                check = check.Select(val => Math.Round(val, 4)).ToArray();
+                if (!checkList.Any(check.SequenceEqual))
+                {
+                    passed.Add(v);
+                    checkList.Add(check);
+                }
+                else
+                {
+                    failed.Add(v);
+                }
+
+            }
+
+            return new Dictionary<string, List<Vector>>
+            {
+                {"passed", passed},
+                {"failed", failed}
+            };
+        }
+
+
+
+        /// <summary>
+        /// Create a set from only the unique items in a list of planes.
+        /// </summary>
+        /// <param name="planes">List of planes</param>
+        /// <param name="option">Test origin and axes (true) or just axes (false)</param>
+        /// <returns></returns>
+        [MultiReturn(new[] { "passed", "failed" })]
+        public static Dictionary<string, List<Plane>> getUnique_Plane(List<Plane> planes, bool option = false)
+        {
+            List<Plane> passed = new List<Plane>();
+            List<Plane> failed = new List<Plane>();
+            List<double[]> checkList = new List<double[]>();
+
+            foreach (Plane p in planes)
+            {
+                double[] check = new double[] { };
+                if (option)
+                {
+                    check = new double[] { p.Origin.X, p.Origin.Y, p.Origin.Z, p.Normal.X, p.Normal.Y, p.Normal.Z, p.XAxis.X, p.XAxis.Y, p.XAxis.Z };
+                }
+                else
+                {
+                    check = new double[] { p.Normal.X, p.Normal.Y, p.Normal.Z, p.XAxis.X, p.XAxis.Y, p.XAxis.Z };
+                }
+                check = check.Select(val => Math.Round(val, 4)).ToArray();
+                if (!checkList.Any(check.SequenceEqual))
+                {
+                    passed.Add(p);
+                    checkList.Add(check);
+                }
+                else
+                {
+                    failed.Add(p);
+                }
+            }
+
+            return new Dictionary<string, List<Plane>>
+            {
+                {"passed", passed},
+                {"failed", failed}
+            };
+        }
+
+
+
+        /// <summary>
+        /// Create a set from only the unique items in a list of coordinate systems.
+        /// </summary>
+        /// <param name="coordSys">List of coordinate systems</param>
+        /// <param name="option">Test origin and axes (true) or just axes (false)</param>
+        /// <returns></returns>
+        [MultiReturn(new[] { "passed", "failed" })]
+        public static Dictionary<string, List<CoordinateSystem>> getUnique_CoordSys(List<CoordinateSystem> coordSys, bool option = false)
+        {
+            List<CoordinateSystem> passed = new List<CoordinateSystem>();
+            List<CoordinateSystem> failed = new List<CoordinateSystem>();
+            List<double[]> checkList = new List<double[]>();
+
+            foreach (CoordinateSystem c in coordSys)
+            {
+                double[] check = new double[] { };
+                if (option)
+                {
+                    check = new double[] { c.Origin.X, c.Origin.Y, c.Origin.Z, c.ZAxis.X, c.ZAxis.Y, c.ZAxis.Z, c.XAxis.X, c.XAxis.Y, c.XAxis.Z };
+                }
+                else
+                {
+                    check = new double[] { c.ZAxis.X, c.ZAxis.Y, c.ZAxis.Z, c.XAxis.X, c.XAxis.Y, c.XAxis.Z };
+                }
+                check = check.Select(v => Math.Round(v, 4)).ToArray();
+                if (!checkList.Any(check.SequenceEqual))
+                {
+                    passed.Add(c);
+                    checkList.Add(check);
+                }
+                else
+                {
+                    failed.Add(c);
+                }
+            }
+
+            return new Dictionary<string, List<CoordinateSystem>>
+            {
+                {"passed", passed},
+                {"failed", failed}
+            };
+        }
+
+
+
+
+        /// <summary>
+        /// Test plane normals against guide vector using angular tolerance.
         /// </summary>
         /// <param name="planeList">Planes to test</param>
         /// <param name="guide">Guide vector</param>
         /// <param name="tolerance">Angular tolerance (degrees)</param>
         /// <returns></returns>
         [MultiReturn(new[] { "passed", "failed" })]
-        public static Dictionary<string, List<Plane>> testAngular_Plane(List<Plane> planeList, [DefaultArgumentAttribute("{Vector.ByCoordinates(0,0,-1)}")] Vector guide, double tolerance = 120)
+        public static Dictionary<string, List<Plane>> testAngular1_Plane(List<Plane> planeList, [DefaultArgumentAttribute("{Vector.ByCoordinates(0,0,-1)}")] Vector guide, double tolerance = 120)
         {
             List<Plane> passed = new List<Plane>();
             List<Plane> failed = new List<Plane>();
@@ -535,14 +778,14 @@ namespace Dynamo_TORO
 
 
         /// <summary>
-        /// Test coordinate system Z-axes against guide vector and angular tolerance.
+        /// Test coordinate system Z-axes against guide vector using angular tolerance.
         /// </summary>
         /// <param name="csList">Coordinate systems to test</param>
         /// <param name="guide">Guide vector</param>
         /// <param name="tolerance">Angular tolerance (degrees)</param>
         /// <returns></returns>
         [MultiReturn(new[] { "passed", "failed" })]
-        public static Dictionary<string, List<CoordinateSystem>> testAngular_CoordSys(List<CoordinateSystem> csList, [DefaultArgumentAttribute("{Vector.ByCoordinates(0,0,-1)}")] Vector guide, double tolerance = 120)
+        public static Dictionary<string, List<CoordinateSystem>> testAngular1_CoordSys(List<CoordinateSystem> csList, [DefaultArgumentAttribute("{Vector.ByCoordinates(0,0,-1)}")] Vector guide, double tolerance = 120)
         {
             List<CoordinateSystem> passed = new List<CoordinateSystem>();
             List<CoordinateSystem> failed = new List<CoordinateSystem>();
@@ -568,44 +811,87 @@ namespace Dynamo_TORO
         }
 
 
-        /*
         /// <summary>
-        /// Test plane normals each other and angular tolerance.
+        /// Test plane normals against each other using angular tolerance.
         /// </summary>
         /// <param name="planeList">Planes to test</param>
         /// <param name="tolerance">Angular tolerance (degrees)</param>
         /// <returns></returns>
         [MultiReturn(new[] { "passed", "failed" })]
-        public static Dictionary<string, List<Plane>> testAngular2_Plane(List<Plane> planeList, double tolerance = 15)
+        public static Dictionary<string, List<Plane>> testAngular2_Plane(List<Plane> planeList, double tolerance = 35)
         {
             List<Plane> passed = new List<Plane>();
             List<Plane> failed = new List<Plane>();
-            List<int> indices = new List<int>();
+
             List<Vector> normals = planeList.Select(p => p.Normal).ToList();
 
-            foreach (Plane p in planeList)
+            for (int i = 0; i < planeList.Count(); i++)
             {
-                for (int i = 0; i < normals.Count(); i++)
+                for (int j = 0; j < planeList.Count(); j++)
                 {
-                    double dot = p.Normal.Dot(normals[i]);
-                    double angle = Math.Acos(dot) * (180 / Math.PI);
-                    if (angle > tolerance)
+                    if (normals[i] != normals[j])
                     {
-                        failed.Add(p);
-                    }
-                    else
-                    {
-                        passed.Add(p);
+                        double dot = normals[i].Dot(normals[j]);
+                        double angle = Math.Acos(dot) * (180 / Math.PI);
+
+                        if (angle < tolerance && !failed.Contains(planeList[i]))
+                        {
+                            failed.Add(planeList[i]);
+                        }
                     }
                 }
             }
+
+            passed = planeList.Except(failed).ToList();
+
             return new Dictionary<string, List<Plane>>
             {
                 {"passed", passed},
                 {"failed", failed}
             };
         }
-        */
+
+
+
+        /// <summary>
+        /// Test coordinate system Z-axes against each other using angular tolerance.
+        /// </summary>
+        /// <param name="csList">Coordinate systems to test</param>
+        /// <param name="tolerance">Angular tolerance (degrees)</param>
+        /// <returns></returns>
+        [MultiReturn(new[] { "passed", "failed" })]
+        public static Dictionary<string, List<CoordinateSystem>> testAngular2_CoordSys(List<CoordinateSystem> csList, double tolerance = 35)
+        {
+            List<CoordinateSystem> passed = new List<CoordinateSystem>();
+            List<CoordinateSystem> failed = new List<CoordinateSystem>();
+
+            List<Vector> normals = csList.Select(p => p.ZAxis).ToList();
+
+            for (int i = 0; i < csList.Count(); i++)
+            {
+                for (int j = 0; j < csList.Count(); j++)
+                {
+                    if (normals[i] != normals[j])
+                    {
+                        double dot = normals[i].Dot(normals[j]);
+                        double angle = Math.Acos(dot) * (180 / Math.PI);
+
+                        if (angle < tolerance && !failed.Contains(csList[i]))
+                        {
+                            failed.Add(csList[i]);
+                        }
+                    }
+                }
+            }
+
+            passed = csList.Except(failed).ToList();
+
+            return new Dictionary<string, List<CoordinateSystem>>
+            {
+                {"passed", passed},
+                {"failed", failed}
+            };
+        }
 
 
 
@@ -729,19 +1015,23 @@ namespace Dynamo_TORO
 
 
         /// <summary>
-        /// For each point get list of and reorient all lines.
+        /// For each point get list of and reorient all lines and get list of planes.
         /// </summary>
         /// <param name="lines">List of lines</param>
         /// <param name="points">List of points</param>
         /// <returns></returns>
-        public static List<List<Line>> getLinesAtPoint(List<Line> lines, List<Point> points)
+        [MultiReturn(new[] { "lineList", "planeList" })]
+        public static Dictionary<string, List<List<Object>>> getLinesAtPoint(List<Line> lines, List<Point> points)
         {
-            List<List<Line>> lineListList = new List<List<Line>>();
+            List<List<Object>> lineListList = new List<List<Object>>();
+            List<List<Object>> planeListList = new List<List<Object>>();
             List<Point> errPoints = new List<Point>();
 
             foreach (Point p in points)
             {
-                List<Line> lineList = new List<Line>();
+                List<Object> lineList = new List<Object>();
+                List<Object> planeList = new List<Object>();
+
                 List<bool> boolList = new List<bool>();
 
                 foreach (Line l in lines)
@@ -753,18 +1043,28 @@ namespace Dynamo_TORO
                         if (meets)
                         {
                             lineList.Add(l);
+                            Plane pl = l.PlaneAtParameter(0);
+                            planeList.Add((Object)pl);
                         }
                         else
                         {
                             Line lRev = (Line) l.Reverse();
-                            lineList.Add(lRev);
+                            lineList.Add((Object) lRev);
+                            Plane pl = lRev.PlaneAtParameter(0);
+                            planeList.Add((Object) pl);
                         }
                     }
                 }
+
                 lineListList.Add(lineList);
+                planeListList.Add(planeList);
             }
 
-            return lineListList;
+            return new Dictionary<string, List<List<Object>>>
+            {
+                {"lineList", lineListList},
+                {"planeList", planeListList}
+            };
         }
 
 
@@ -833,7 +1133,7 @@ namespace Dynamo_TORO
         /// <param name="drillFrame">Position of drill tip</param>
         /// <returns></returns>
         [MultiReturn(new[] { "filePaths" })]
-        public static Dictionary<string, List<string>> createDrillRoutine3(string directory, string filePrefix, List<List<Plane>> holeFrames, Plane blockFrame, Plane drillFrame)
+        public static Dictionary<string, List<string>> createDrillRoutine1(string directory, string filePrefix, List<List<Plane>> holeFrames, Plane blockFrame, Plane drillFrame)
         {
             // create list of filenames
             List<string> outputFiles = new List<string>();
@@ -930,7 +1230,108 @@ namespace Dynamo_TORO
             };
         }
 
-        
+
+
+
+
+
+        /// <summary>
+        /// Create routine for an ABB robot with stationary drill and mobile workpiece.
+        /// </summary>
+        /// <param name="directory">Directory to write files ("C:\")</param>
+        /// <param name="filePrefix">Convention for filename prefix ("Group_A")</param>
+        /// <param name="holeFrames">Position of all holes per block</param>
+        /// <returns></returns>
+        [MultiReturn(new[] { "filePaths" })]
+        public static Dictionary<string, List<string>> createDrillRoutine2(string directory, string filePrefix, List<List<Plane>> holeFrames)
+        {
+            // create list of filenames
+            List<string> outputFiles = new List<string>();
+
+            // begin main
+            foreach (List<Plane> holes in holeFrames)
+            {
+                // name files
+                int indexPlusOne = holeFrames.IndexOf(holes) + 1;
+                string paddedIndex = indexPlusOne.ToString().PadLeft(3, '0');
+                string filename = string.Format("{0}\\{1}_{2}.prg", directory, filePrefix, paddedIndex);
+                outputFiles.Add(filename);
+
+                // setup sub
+                int index = 0;
+                var targBuilder = new StringBuilder();
+                var moveBuilder = new StringBuilder();
+                targBuilder.Append(string.Format("\n\tVAR jointtarget j0 := {0};", jtarget(-90, 0, 0, 90, 90, 0)));
+                targBuilder.Append(string.Format("\n\tVAR jointtarget j1 := {0};", jtarget(-41, 0, 0, 0, 90, 0)));
+                foreach (Plane hole in holes)
+                {
+                    // create targets
+                    targBuilder.Append(string.Format("\n\tVAR robtarget p{0}0 := {1};", index, rtarget((Plane)hole.Translate(hole.Normal, -120))));
+                    targBuilder.Append(string.Format("\n\tVAR robtarget p{0}1 := {1};", index, rtarget((Plane)hole.Translate(hole.Normal, -50))));
+                    targBuilder.Append(string.Format("\n\tVAR robtarget p{0}2 := {1};", index, rtarget((Plane)hole.Translate(hole.Normal, -10))));
+
+                    // create movement instructions
+                    moveBuilder.Append(string.Format("\n"));
+                    moveBuilder.Append(string.Format("\n\t\tTPWrite(\"Drilling hole {0} of {1}!\");", index + 1, holes.Count()));
+                    moveBuilder.Append(string.Format("\n\t\tMoveL p{0}0, {1}, {2}, drill\\WObj:=block;", index, "v100", "z30"));
+                    moveBuilder.Append(string.Format("\n\t\tMoveL p{0}1, {1}, {2}, drill\\WObj:=block;", index, "v100", "z5"));
+                    moveBuilder.Append(string.Format("\n\t\tMoveL p{0}2, {1}, {2}, drill\\WObj:=block;", index, "rate", "fine"));
+                    moveBuilder.Append(string.Format("\n\t\tMoveL p{0}1, {1}, {2}, drill\\WObj:=block;", index, "rate", "fine"));
+                    moveBuilder.Append(string.Format("\n\t\tMoveL p{0}0, {1}, {2}, drill\\WObj:=block;", index, "v100", "z30"));
+                    moveBuilder.Append(string.Format("\n\t\tMoveL RelTool(p{0}0, 0, 50, 0), {1}, {2}, drill\\WObj:=block;", index, "v100", "z5"));
+
+                    // create safe movement to next
+                    if (index < holes.Count() - 1)
+                    {
+                        moveBuilder.Append(string.Format("\n\t\tMoveAbsJ CalcJointT(RelTool(p{0}0, 0, 50, 0), drill\\WObj:=block), {1}, {2}, drill\\WObj:=block;", index + 1, "v100", "z5"));
+                    }
+
+                    // update index
+                    index += 1;
+                }
+
+                // create rapid
+                string r = "";
+                using (var tw = new StreamWriter(filename, false))
+                {
+                    r =
+                        "MODULE MainModule" +
+                        "\n" +
+                        "\n\t" + "! " + filePrefix + "_" + paddedIndex +
+                        "\n" +
+                        "\n\t" + "! targets" + targBuilder.ToString() +
+                        "\n" +
+                        "\n\t" + "! drilling instructions" +
+                        "\n\t" + "PROC main()" +
+                        "\n\t\t" + "ConfL\\Off;" +
+                        "\n\t\t" + "SingArea\\Wrist;" +
+                        "\n" +
+                        "\n\t\t" + "TPWrite(\"This is: " + filePrefix + "_" + paddedIndex + "\");" +
+                        "\n\t\t" + "TPWrite(\"Check block and drill\");" +
+                        "\n\t\t" + "MoveAbsJ j0, v100, z5, tool0;" +
+                        "\n\t\t" + "MoveAbsJ j1, v100, z5, tool0;" + moveBuilder.ToString() +
+                        "\n\n\t\t" + "TPWrite(\"Resetting axes...\");" +
+                        "\n\t\t" + "MoveAbsJ j1, v100, z5, tool0;" +
+                        "\n\t\t" + "MoveAbsJ j0, v100, z5, tool0;" +
+                        "\n" +
+                        "\n\t\t" + "Stop;" +
+                        "\n\t" + "ENDPROC" +
+                        "\n" +
+                        "\n" + "ENDMODULE"
+                        ;
+
+                    tw.Write(r);
+                    tw.Flush();
+                }
+            }
+
+            // end step
+            return new Dictionary<string, List<string>>
+            {
+                {"filePaths", outputFiles}
+            };
+        }
+
 
 
 

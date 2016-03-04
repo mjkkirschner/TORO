@@ -1273,6 +1273,17 @@ namespace Dynamo_TORO
         }
 
         /// <summary>
+        /// Sort vectors by Z value.
+        /// </summary>
+        /// <param name="vectors">Vectors list</param>
+        /// <returns></returns>
+        public static List<Vector> sortVectorsByZ(List<Vector> vectors)
+        {
+            vectors = vectors.OrderBy(a => a.Z).ToList();
+            return vectors;
+        }
+
+        /// <summary>
         /// Sort planes by Z value.
         /// </summary>
         /// <param name="planes">Plane list</param>
@@ -1283,6 +1294,16 @@ namespace Dynamo_TORO
             return planes;
         }
 
+        /// <summary>
+        /// Sort coordinate systems by Z value.
+        /// </summary>
+        /// <param name="coordSys">Coordinate system list</param>
+        /// <returns></returns>
+        public static List<CoordinateSystem> sortPlanesByZ(List<CoordinateSystem> coordSys)
+        {
+            coordSys = coordSys.OrderBy(a => a.Origin.Z).ToList();
+            return coordSys;
+        }
 
     }
 
