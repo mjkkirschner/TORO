@@ -507,7 +507,7 @@ namespace WireFrameToRobot
 
 
         //debug
-        public static void DebugFailure(List<Point> nodeCenters, List<Line> struts, Solid baseNode)
+        private static void DebugFailure(List<Point> nodeCenters, List<Line> struts, Solid baseNode)
         {
             //prune all duplicate inputs from wireframe
             var prunedPoints = Point.PruneDuplicates(nodeCenters);
@@ -522,7 +522,7 @@ namespace WireFrameToRobot
         }
 
 
-        public Solid DebugDifferenceFailure(Solid geo,List<Solid> sub)
+        private Solid DebugDifferenceFailure(Solid geo,List<Solid> sub)
         {
            
             var output = geo.DifferenceAll(sub);
