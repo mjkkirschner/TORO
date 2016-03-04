@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 namespace WireFrameToRobot
 {
-    public class Strut:ILabelAble
+    public class Strut:ILabelAble,IDisposable
     {
         public string ID { get; private set; }
         public Line LineRepresentation { get; private set; }
@@ -36,7 +36,7 @@ namespace WireFrameToRobot
         private Plane CutPlane { get
             {
                 var coordinateSystemOnLine = LineRepresentation.CoordinateSystemAtParameter(0);
-                //reverse the normal because we want the plane to normal to point towards the node
+                //reverse the normal because we want the plane normal to point towards the node
                 //TODO(mike + Nick) we need to verify this is correct
                 return Plane.ByOriginNormalXAxis(coordinateSystemOnLine.Origin,coordinateSystemOnLine.YAxis.Reverse(), coordinateSystemOnLine.ZAxis); }
         }
@@ -46,8 +46,12 @@ namespace WireFrameToRobot
         {
             get
             {
-                var inverse = OwnerNode.OrientedNodeGeometry.ContextCoordinateSystem.Inverse();
-                return CutPlane.Transform(inverse) as Plane;
+                var cs = OwnerNode.OrientedNodeGeometry.ContextCoordinateSystem;
+                var inverse = cs.Inverse();
+                var output = CutPlane.Transform(inverse) as Plane;
+                cs.Dispose();
+                inverse.Dispose();
+                return output;
             }
         }
 
@@ -80,7 +84,25 @@ namespace WireFrameToRobot
             return true;
         }
 
+        public void Dispose()
+        {
+           if(LineRepresentation.Tags.LookupTag("dispose") != null)
+            {
+                LineRepresentation.Dispose();
+            }
+        }
 
+        public int SpatialHash()
+        {
+            unchecked
+            {
+                var hash = 0;
+                hash = hash ^ LineRepresentation.StartPoint.ToString().GetHashCode();
+                hash = hash ^ LineRepresentation.EndPoint.ToString().GetHashCode();
+
+                return hash;
+            }
+        }
     }
 }
 namespace WireFrameToRobot.Extensions
