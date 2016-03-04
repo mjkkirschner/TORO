@@ -92,7 +92,7 @@ namespace WireFrameToRobot
             }
         }
 
-        private int SpatialHash()
+        public int SpatialHash()
         {
             unchecked
             {
