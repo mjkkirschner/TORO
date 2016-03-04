@@ -289,19 +289,21 @@ namespace WireFrameToRobot
         private static List<Line> findAdjacentLines(Point center, IEnumerable<Line> allLines)
         {
 
-            var sphere = Sphere.ByCenterPointRadius(center, 3);
+          
             var intersectingLines = new List<Line>(); 
 
             foreach(var line in allLines)
-            { var results = sphere.Intersect(line);
-                if (results.Count() > 0)
+            {
+               var ep = line.EndPoint;
+               var  sp = line.StartPoint;
+              if (sp.IsAlmostEqualTo(center) || ep.IsAlmostEqualTo(center))
                 {
                     intersectingLines.Add(line);
                 }
-                results.ForEach(x => x.Dispose());
+                ep.Dispose();
+                sp.Dispose();
             }
-            //var intersectingLines = allLines.Where(x => sphere.DoesIntersect(x)).ToList();
-            sphere.Dispose();
+            
             return intersectingLines;
         }
 
