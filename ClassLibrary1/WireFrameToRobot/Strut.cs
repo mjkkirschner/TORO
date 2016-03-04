@@ -11,20 +11,8 @@ namespace WireFrameToRobot
         public Line LineRepresentation { get; private set; }
         public Node OwnerNode { get; private set; }
         public double Diameter { get; private set; }
-        public Solid StrutGeometry
-        {
-            get
-            {
-                //construct a swept tube along the strut line
-                var startPlane = LineRepresentation.PlaneAtParameter(0);
-                var circle = Circle.ByPlaneRadius(startPlane, Diameter / 2);
-                var swept = circle.SweepAsSolid(LineRepresentation);
-                circle.Dispose();
-                startPlane.Dispose();
-                return swept;
-            }
-        }
-
+        public Solid StrutGeometry { get; private set; }
+       
         public List<Curve> GetLabels(double scale =30)
         {
             var label = new Label<Strut>(this, scale);
@@ -68,6 +56,14 @@ namespace WireFrameToRobot
             LineRepresentation = line;
             OwnerNode = owner;
             Diameter = diameter; //mm
+
+            //construct a swept tube along the strut line
+            var startPlane = LineRepresentation.PlaneAtParameter(0);
+            var circle = Circle.ByPlaneRadius(startPlane, Diameter / 2);
+            var swept = circle.SweepAsSolid(LineRepresentation);
+            circle.Dispose();
+            startPlane.Dispose();
+            StrutGeometry = swept;
         }
         internal void SetId(string id)
         {
@@ -90,6 +86,7 @@ namespace WireFrameToRobot
             {
                 LineRepresentation.Dispose();
             }
+            StrutGeometry.Dispose();
         }
 
         public int SpatialHash()

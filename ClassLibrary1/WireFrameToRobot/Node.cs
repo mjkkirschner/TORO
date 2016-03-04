@@ -23,21 +23,11 @@ namespace WireFrameToRobot
         public Point Center { get; private set; }
         public Solid NodeGeometry { get
             {
-                var strutsgeo = this.Struts.Select(x => x.StrutGeometry);
+                var strutsgeo = this.Struts.Select(x => x.StrutGeometry).ToList();
 
-                var accum = this.OrientedNodeGeometry.Translate(0,0,0) as Solid;
-                Solid next;
-                foreach (var strutgeo in strutsgeo)
-                {
-                    next = accum.Difference(strutgeo);
-                    accum.Dispose();
-                    accum = next;
-                }
+                var node = this.OrientedNodeGeometry;
+                var accum = node.DifferenceAll(strutsgeo);
 
-               foreach(var strut in strutsgeo)
-                {
-                    strut.Dispose();
-                }
                 return accum;
 
             }
@@ -89,19 +79,7 @@ namespace WireFrameToRobot
         private Surface holderFacePreTransform;
 
 
-        public static void DebugFailure(List<Point> nodeCenters, List<Line> struts, Solid baseNode)
-        {
-            //prune all duplicate inputs from wireframe
-            var prunedPoints = Point.PruneDuplicates(nodeCenters);
-            var prunedLines = GeometryExtensions.PruneDuplicates(struts);
-
-            foreach (var centerPoint in prunedPoints)
-            {
-                //find adjacent struts for this node
-                var intersectingLines = findAdjacentLines(centerPoint, prunedLines);
-            }
-
-        }
+       
         /// <summary>
         /// this method groups nodes by type defined by their cut planes within some tolerance
         /// </summary>
@@ -486,6 +464,31 @@ namespace WireFrameToRobot
             this.holderFacePreTransform.Dispose();
             this.Struts.ForEach(x => x.Dispose());
 
+        }
+
+
+        //debug
+        public static void DebugFailure(List<Point> nodeCenters, List<Line> struts, Solid baseNode)
+        {
+            //prune all duplicate inputs from wireframe
+            var prunedPoints = Point.PruneDuplicates(nodeCenters);
+            var prunedLines = GeometryExtensions.PruneDuplicates(struts);
+
+            foreach (var centerPoint in prunedPoints)
+            {
+                //find adjacent struts for this node
+                var intersectingLines = findAdjacentLines(centerPoint, prunedLines);
+            }
+
+        }
+
+
+        public Solid DebugDifferenceFailure(Solid geo,List<Solid> sub)
+        {
+           
+            var output = geo.DifferenceAll(sub);
+        
+            return output;
         }
     }
 
