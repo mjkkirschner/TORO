@@ -46,8 +46,12 @@ namespace WireFrameToRobot
         {
             get
             {
-                var inverse = OwnerNode.OrientedNodeGeometry.ContextCoordinateSystem.Inverse();
-                return CutPlane.Transform(inverse) as Plane;
+                var cs = OwnerNode.OrientedNodeGeometry.ContextCoordinateSystem;
+                var inverse = cs.Inverse();
+                var output = CutPlane.Transform(inverse) as Plane;
+                cs.Dispose();
+                inverse.Dispose();
+                return output;
             }
         }
 
@@ -85,6 +89,18 @@ namespace WireFrameToRobot
            if(LineRepresentation.Tags.LookupTag("dispose") != null)
             {
                 LineRepresentation.Dispose();
+            }
+        }
+
+        private int SpatialHash()
+        {
+            unchecked
+            {
+                var hash = 0;
+                hash = hash ^ LineRepresentation.StartPoint.ToString().GetHashCode();
+                hash = hash ^ LineRepresentation.EndPoint.ToString().GetHashCode();
+
+                return hash;
             }
         }
     }

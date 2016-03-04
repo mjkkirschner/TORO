@@ -127,7 +127,7 @@ namespace WireFrameToRobot
                     else
                     {
                         //we have not seen this type so add it
-                        nodeTypes.Add(Tuple.Create(node, new List<Node>()));
+                        nodeTypes.Add(Tuple.Create(node, new List<Node>() { node}));
                         
                     }
 
@@ -137,10 +137,76 @@ namespace WireFrameToRobot
             return nodeTypes.Select(x => x.Item2).ToList();
         }
 
+        public static List<List<Node>> FindNodeTypesUsingHash(List<Node> nodesToGroup)
+        {
+            //create buckets of nodes based on strut number
+            var groups = nodesToGroup.GroupBy(x => x.Struts.Count);
+            //our output structure
+            var nodeTypes = new Dictionary<int, List<Node>>();
+
+            foreach (var group in groups)
+            {
+                foreach (var node in group)
+                {
+                    var key = node.NodeTypeHash();
+                   if(nodeTypes.ContainsKey(key))
+                    {
+                        nodeTypes[key].Add(node);
+                    }
+                    else
+                    {
+                        //we have not seen this type so add it
+                        nodeTypes.Add(node.NodeTypeHash(), new List<Node>() { node });
+
+                    }
+
+                }
+            }
+
+            return nodeTypes.Select(x=>x.Value).ToList();
+        }
+
+
         private static bool SameNode(Node nodea,Node nodeb)
         {
+            if(nodea.Struts.Count != nodeb.Struts.Count)
+            {
+                return false;
+            }
             var nodebPlanes = nodeb.Struts.Select(x => x.TransformedCutPlane);
             return nodea.Struts.Select(x => x.TransformedCutPlane).All(x => nodebPlanes.Any(y => x.IsAlmostEqualTo(y)));
+        }
+
+        private int NodeTypeHash()
+        {
+            unchecked
+            {
+                int hash = 13;
+                foreach (var strut in Struts)
+                {
+                    var plane = strut.TransformedCutPlane;
+                    hash = hash ^ PlaneTypeHash(plane);
+                }
+                return hash;
+            }
+        }
+
+        private static int PlaneTypeHash(Plane pln)
+        {
+            unchecked
+            {
+                var hash = 13;
+                hash = (hash * 7) + VectorRoundedString(pln.XAxis).GetHashCode();
+                hash = (hash * 7) + VectorRoundedString(pln.YAxis).GetHashCode();
+                hash = (hash * 7) + VectorRoundedString(pln.Normal).GetHashCode();
+
+                return hash;
+            }
+        }
+
+        private static string VectorRoundedString(Vector vec)
+        {
+            return "X" + Math.Round(vec.X, 4).ToString() + "Y" + Math.Round(vec.X, 4).ToString() + "Z" + Math.Round(vec.X, 4).ToString();
         }
 
         /// <summary>
