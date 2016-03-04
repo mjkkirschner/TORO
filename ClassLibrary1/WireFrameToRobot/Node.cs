@@ -17,19 +17,28 @@ namespace WireFrameToRobot
         AllNodesOrientedToWorldXYZ, AllNodesSameAsBaseGeo, AverageStrutsVector, OrientationProvided
     }
 
-    public class Node: ILabelAble
+    public class Node: ILabelAble,IDisposable
     {
 
         public Point Center { get; private set; }
         public Solid NodeGeometry { get
             {
-                var struts = this.Struts.Select(x => x.StrutGeometry);
-                var output = this.OrientedNodeGeometry.DifferenceAll(struts);
-               foreach(var strut in struts)
+                var strutsgeo = this.Struts.Select(x => x.StrutGeometry);
+
+                var accum = this.OrientedNodeGeometry.Translate(0,0,0) as Solid;
+                Solid next;
+                foreach (var strutgeo in strutsgeo)
+                {
+                    next = accum.Difference(strutgeo);
+                    accum.Dispose();
+                    accum = next;
+                }
+
+               foreach(var strut in strutsgeo)
                 {
                     strut.Dispose();
                 }
-                return output;
+                return accum;
 
             }
         }
@@ -42,7 +51,16 @@ namespace WireFrameToRobot
         /// <summary>
         /// gets the holder face of the node - this is assumed to be the top most surface of the node before orientation occurs
         /// </summary>
-        public Surface HolderFace { get { return holderFacePreTransform.Transform(OrientedNodeGeometry.ContextCoordinateSystem) as Surface; } }
+        public Surface HolderFace
+        {
+            get
+            {
+                var orientation = OrientedNodeGeometry.ContextCoordinateSystem;
+                var output = holderFacePreTransform.Transform(orientation) as Surface;
+                orientation.Dispose();
+                return output;
+            }
+        }
         public Solid holderRep
         {
             get
@@ -83,6 +101,112 @@ namespace WireFrameToRobot
                 var intersectingLines = findAdjacentLines(centerPoint, prunedLines);
             }
 
+        }
+        /// <summary>
+        /// this method groups nodes by type defined by their cut planes within some tolerance
+        /// </summary>
+        /// <returns></returns>
+        public static List<List<Node>> FindNodeTypes(List<Node> nodesToGroup)
+        {
+            //create buckets of nodes based on strut number
+            var groups = nodesToGroup.GroupBy(x => x.Struts.Count);
+            //our output structure...almost, (TODO use dict after we implement has hash)
+            var nodeTypes = new List<Tuple<Node,List<Node>>>();
+
+            foreach(var group in groups)
+            {
+                foreach( var node in group)
+                {
+                    //if this type exists in the nodeTypes list, then we can just add our nodes
+                    var matchingTypes = nodeTypes.Where(x => SameNode(node, x.Item1));
+                    if (matchingTypes.Count() > 0)
+                    {
+                        //there should be only match
+                        matchingTypes.First().Item2.Add(node);
+                    }
+                    else
+                    {
+                        //we have not seen this type so add it
+                        nodeTypes.Add(Tuple.Create(node, new List<Node>() { node}));
+                        
+                    }
+
+                }
+            }
+
+            return nodeTypes.Select(x => x.Item2).ToList();
+        }
+
+        public static List<List<Node>> FindNodeTypesUsingHash(List<Node> nodesToGroup)
+        {
+            //create buckets of nodes based on strut number
+            var groups = nodesToGroup.GroupBy(x => x.Struts.Count);
+            //our output structure
+            var nodeTypes = new Dictionary<int, List<Node>>();
+
+            foreach (var group in groups)
+            {
+                foreach (var node in group)
+                {
+                    var key = node.NodeTypeHash();
+                   if(nodeTypes.ContainsKey(key))
+                    {
+                        nodeTypes[key].Add(node);
+                    }
+                    else
+                    {
+                        //we have not seen this type so add it
+                        nodeTypes.Add(node.NodeTypeHash(), new List<Node>() { node });
+
+                    }
+
+                }
+            }
+
+            return nodeTypes.Select(x=>x.Value).ToList();
+        }
+
+
+        private static bool SameNode(Node nodea,Node nodeb)
+        {
+            if(nodea.Struts.Count != nodeb.Struts.Count)
+            {
+                return false;
+            }
+            var nodebPlanes = nodeb.Struts.Select(x => x.TransformedCutPlane);
+            return nodea.Struts.Select(x => x.TransformedCutPlane).All(x => nodebPlanes.Any(y => x.IsAlmostEqualTo(y)));
+        }
+
+        private int NodeTypeHash()
+        {
+            unchecked
+            {
+                int hash = 13;
+                foreach (var strut in Struts)
+                {
+                    var plane = strut.TransformedCutPlane;
+                    hash = hash ^ PlaneTypeHash(plane);
+                }
+                return hash;
+            }
+        }
+
+        private static int PlaneTypeHash(Plane pln)
+        {
+            unchecked
+            {
+                var hash = 13;
+                hash = (hash * 7) + VectorRoundedString(pln.XAxis).GetHashCode();
+                hash = (hash * 7) + VectorRoundedString(pln.YAxis).GetHashCode();
+                hash = (hash * 7) + VectorRoundedString(pln.Normal).GetHashCode();
+
+                return hash;
+            }
+        }
+
+        private static string VectorRoundedString(Vector vec)
+        {
+            return "X" + Math.Round(vec.X, 4).ToString() + "Y" + Math.Round(vec.X, 4).ToString() + "Z" + Math.Round(vec.X, 4).ToString();
         }
 
         /// <summary>
@@ -165,19 +289,21 @@ namespace WireFrameToRobot
         private static List<Line> findAdjacentLines(Point center, IEnumerable<Line> allLines)
         {
 
-            var sphere = Sphere.ByCenterPointRadius(center, 3);
+          
             var intersectingLines = new List<Line>(); 
 
             foreach(var line in allLines)
-            { var results = sphere.Intersect(line);
-                if (results.Count() > 0)
+            {
+               var ep = line.EndPoint;
+               var  sp = line.StartPoint;
+              if (sp.IsAlmostEqualTo(center) || ep.IsAlmostEqualTo(center))
                 {
                     intersectingLines.Add(line);
                 }
-                results.ForEach(x => x.Dispose());
+                ep.Dispose();
+                sp.Dispose();
             }
-            //var intersectingLines = allLines.Where(x => sphere.DoesIntersect(x)).ToList();
-            sphere.Dispose();
+            
             return intersectingLines;
         }
 
@@ -202,22 +328,55 @@ namespace WireFrameToRobot
             {
                 case OrientationStrategy.AllNodesOrientedToWorldXYZ:
 
+                    var plane = Plane.ByOriginNormal(Center, Vector.ZAxis());
+                    var newCs = CoordinateSystem.ByPlane(plane);
+
+                    var output = originalGeometry.Transform(newCs) as Solid;
+                    plane.Dispose();
+                    newCs.Dispose();
+
+                    return output;
                     break;
+
                 case OrientationStrategy.AllNodesSameAsBaseGeo:
 
+                    var orgCs = originalGeometry.ContextCoordinateSystem;
+                     plane = Plane.ByOriginNormal(Center,orgCs.ZAxis);
+                     newCs = CoordinateSystem.ByPlane(plane);
+
+                     output = originalGeometry.Transform(newCs) as Solid;
+                    plane.Dispose();
+                    newCs.Dispose();
+                    orgCs.Dispose();
+
+                    return output;
                     break;
 
                 case OrientationStrategy.AverageStrutsVector:
 
                     //orient the cube based on the average normal of the incoming struts
-                    var averageNorm = averageVector(struts.Select(x => Vector.ByTwoPoints(x.LineRepresentation.StartPoint, x.LineRepresentation.EndPoint)).ToList());
+                    var spoints = struts.Select(x => x.LineRepresentation.StartPoint).ToList();
+                    var epoints = struts.Select(x => x.LineRepresentation.EndPoint).ToList();
+                    var vectors = spoints.Zip(epoints, (x, y) => Vector.ByTwoPoints(x, y)).ToList();
+                    var averageNorm = averageVector(vectors);
+                    var revd = averageNorm.Reverse();
+                    if (revd.IsAlmostEqualTo(Vector.ByCoordinates(0, 0, 0)))
+                        {
+                        revd = Vector.ByCoordinates(0,0,1);
+                    }
                     //reverse the normal so the top face is correct
-                    var plane = Plane.ByOriginNormal(Center, averageNorm.Reverse());
-                    var newCs = CoordinateSystem.ByPlane(plane);
+                     plane = Plane.ByOriginNormal(Center, revd);
+                     newCs = CoordinateSystem.ByPlane(plane);
                    
-                    var output = originalGeometry.Transform(newCs) as Solid;
+                     output = originalGeometry.Transform(newCs) as Solid;
                     plane.Dispose();
                     newCs.Dispose();
+                    spoints.ForEach(x => x.Dispose());
+                    epoints.ForEach(x => x.Dispose());
+                    vectors.ForEach(x => x.Dispose());
+                    averageNorm.Dispose();
+                    revd.Dispose();
+
 
                     return output;
 
@@ -237,11 +396,17 @@ namespace WireFrameToRobot
         private Vector averageVector(List<Vector> vectors)
         {
             var sum = Vector.ByCoordinates(0, 0, 0);
+            Vector next;
             foreach (var vector in vectors)
             {
-                sum = sum.Add(vector);
+                next = sum.Add(vector);
+                sum.Dispose();
+                sum = next;
+              
             }
-            return sum.Scale(1.0 / vectors.Count);
+            var output = sum.Scale(1.0 / vectors.Count);
+            sum.Dispose();
+            return output;
         }
 
         private Line pointAway(Point point, Line line)
@@ -249,6 +414,7 @@ namespace WireFrameToRobot
             if (line.EndPoint.IsAlmostEqualTo(point))
             {
                 var output = line.Reverse() as Line;
+                output.Tags.AddTag("dispose", true);
                 return output ;
             }
             return line;
@@ -275,7 +441,7 @@ namespace WireFrameToRobot
         private static List<GraphEdge<Node, Strut>> UniqueStruts(List<Node> nodes)
         {
             //create a list to store all the edges we have seen
-            var seenStruts = new List<Strut>();
+            var seenStruts = new Dictionary<int, Strut>();
             //our output of graphEdges, this edges represent a single real strut edge
             //in the final model
             var output = new List<GraphEdge<Node, Strut>>();
@@ -286,15 +452,16 @@ namespace WireFrameToRobot
                 //iterate each nodes subStruts
                 foreach (var strut in node.Struts)
                 {
+                    //(TODO mike replace with hashset//
                     //if we have never seen this strut, then add it to the list of seen struts
-                    if ((seenStruts.All(x => !strut.LineRepresentation.SameLine(x.LineRepresentation))))
+                    if (!seenStruts.ContainsKey(strut.SpatialHash()))
                     {
-                        seenStruts.Add(strut);
+                        seenStruts.Add(strut.SpatialHash(), strut);
                     }
                     else
                     {
                         //if we have seen it, then construct an edge that represents the two struts we've see
-                        var otherStrut = seenStruts.Where(x => x.LineRepresentation.SameLine(strut.LineRepresentation)).First();
+                        var otherStrut = seenStruts[strut.SpatialHash()];
                         var edge = new GraphEdge<Node, Strut>(new List<Strut>() { strut, otherStrut }, strut.OwnerNode, otherStrut.OwnerNode);
                         output.Add(edge);
                     }
@@ -311,6 +478,14 @@ namespace WireFrameToRobot
             }
 
             return output;
+        }
+
+        public void Dispose()
+        {
+            this.OrientedNodeGeometry.Dispose();
+            this.holderFacePreTransform.Dispose();
+            this.Struts.ForEach(x => x.Dispose());
+
         }
     }
 
