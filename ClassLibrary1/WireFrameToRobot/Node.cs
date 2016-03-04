@@ -441,7 +441,7 @@ namespace WireFrameToRobot
         private static List<GraphEdge<Node, Strut>> UniqueStruts(List<Node> nodes)
         {
             //create a list to store all the edges we have seen
-            var seenStruts = new List<Strut>();
+            var seenStruts = new Dictionary<int, Strut>();
             //our output of graphEdges, this edges represent a single real strut edge
             //in the final model
             var output = new List<GraphEdge<Node, Strut>>();
@@ -454,14 +454,14 @@ namespace WireFrameToRobot
                 {
                     //(TODO mike replace with hashset//
                     //if we have never seen this strut, then add it to the list of seen struts
-                    if ((seenStruts.All(x => !strut.LineRepresentation.SameLine(x.LineRepresentation))))
+                    if (!seenStruts.ContainsKey(strut.SpatialHash()))
                     {
-                        seenStruts.Add(strut);
+                        seenStruts.Add(strut.SpatialHash(), strut);
                     }
                     else
                     {
                         //if we have seen it, then construct an edge that represents the two struts we've see
-                        var otherStrut = seenStruts.Where(x => x.LineRepresentation.SameLine(strut.LineRepresentation)).First();
+                        var otherStrut = seenStruts[strut.SpatialHash()];
                         var edge = new GraphEdge<Node, Strut>(new List<Strut>() { strut, otherStrut }, strut.OwnerNode, otherStrut.OwnerNode);
                         output.Add(edge);
                     }
