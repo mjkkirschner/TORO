@@ -206,7 +206,7 @@ namespace WireFrameToRobot
 
         private static string VectorRoundedString(Vector vec)
         {
-            return "X" + Math.Round(vec.X, 4).ToString() + "Y" + Math.Round(vec.X, 4).ToString() + "Z" + Math.Round(vec.X, 4).ToString();
+            return "X" + Math.Round(Math.Abs(vec.X), 4).ToString() + "Y" + Math.Round(Math.Abs(vec.Y), 4).ToString() + "Z" + Math.Round(Math.Abs(vec.Z), 4).ToString();
         }
 
         /// <summary>
@@ -365,7 +365,7 @@ namespace WireFrameToRobot
                         revd = Vector.ByCoordinates(0,0,1);
                     }
                     //reverse the normal so the top face is correct
-                     plane = Plane.ByOriginNormal(Center, revd);
+                     plane = Plane.ByOriginNormalXAxis(Center, revd, Vector.ByCoordinates(0,0,1));
                      newCs = CoordinateSystem.ByPlane(plane);
                    
                      output = originalGeometry.Transform(newCs) as Solid;
