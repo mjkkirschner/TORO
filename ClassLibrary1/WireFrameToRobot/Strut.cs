@@ -60,15 +60,15 @@ namespace WireFrameToRobot
         {
             var p = this.TransformedCutPlane;
             var random = new Random();
-            var max = 45.0;
-            var min = -45.0;
+            var max = 90.0;
+            var min = -90.0;
             var angle = random.NextDouble() * (max - min) + min;
 
             var parentFit = Math.Abs(p.XAxis.Y);
             //while the y component is not zero or the x alignment is facing opposite directions
             while (parentFit > .0001 || alignTo.Dot(p.XAxis) < 0  )
             {
-                angle = random.NextDouble() * (5.0 - -5.0) + -5.0;
+                angle = random.NextDouble() * (max - min) + min;
                 var child = p.Rotate(p.Origin, p.Normal, angle) as Plane;
                 var childFit = Math.Abs(child.XAxis.Y);
                 //if the child is closer, then replace p with the current child

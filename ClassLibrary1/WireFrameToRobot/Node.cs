@@ -137,7 +137,7 @@ namespace WireFrameToRobot
             return nodeTypes.Select(x => x.Item2).ToList();
         }
 
-        public static List<List<Node>> FindNodeTypesUsingHash(List<Node> nodesToGroup)
+        public static List<List<Node>> FindNodeTypesUsingHash(List<Node> nodesToGroup,int digitsToRound)
         {
             //create buckets of nodes based on strut number
             var groups = nodesToGroup.GroupBy(x => x.Struts.Count);
@@ -206,7 +206,7 @@ namespace WireFrameToRobot
 
         private static string VectorRoundedString(Vector vec)
         {
-            return "X" + Math.Round(Math.Abs(vec.X), 4).ToString() + "Y" + Math.Round(Math.Abs(vec.Y), 4).ToString() + "Z" + Math.Round(Math.Abs(vec.Z), 4).ToString();
+            return "X" + Math.Round(Math.Abs(vec.X), 2).ToString() + "Y" + Math.Round(Math.Abs(vec.Y), 2).ToString() + "Z" + Math.Round(Math.Abs(vec.Z), 2).ToString();
         }
 
         /// <summary>
