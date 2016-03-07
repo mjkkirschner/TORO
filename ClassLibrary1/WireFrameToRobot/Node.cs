@@ -472,10 +472,10 @@ namespace WireFrameToRobot
             //have some strut that only has one parent node (it leads to no other node)
 
 
-            if (seenStruts.Count > output.Count)
-            {
-                throw new NotImplementedException("there are some orphan struts implement this case");
-            }
+          //  if (seenStruts.Count > output.Count)
+         //   {
+         //       throw new NotImplementedException("there are some orphan struts implement this case");
+         //   }
 
             return output;
         }
