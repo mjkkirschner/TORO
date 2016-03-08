@@ -83,26 +83,27 @@ namespace WireFrameToRobot
         }
 
         
+        /// <summary>
+        /// attempts to find an aligned plane using marching
+        /// </summary>
+        /// <param name="alignTo"></param>
+        /// <returns></returns>
         public Plane TransformedAndAlignedCutPlane([DefaultArgumentAttribute("Vector.ByCoordinates(1,0,0)")]Vector alignTo)
         {
             var p = this.TransformedCutPlane;
             var random = new Random();
-            var max = 90.0;
-            var min = -90.0;
+            var max = 5.0;
+            var min = .0001;
             var angle = random.NextDouble() * (max - min) + min;
 
             var parentFit = Math.Abs(p.XAxis.Y);
             //while the y component is not zero or the x alignment is facing opposite directions
-            while (parentFit > .0001 || alignTo.Dot(p.XAxis) < 0  )
+            while (parentFit > .01 || alignTo.Dot(p.XAxis) < 0  )
             {
                 angle = random.NextDouble() * (max - min) + min;
                 var child = p.Rotate(p.Origin, p.Normal, angle) as Plane;
                 var childFit = Math.Abs(child.XAxis.Y);
-                //if the child is closer, then replace p with the current child
-                if (childFit < parentFit)
-                {
-                    p = child;
-                }
+                p = child;
                 //recalculate parentFit
                 parentFit = Math.Abs(p.XAxis.Y);
             }
