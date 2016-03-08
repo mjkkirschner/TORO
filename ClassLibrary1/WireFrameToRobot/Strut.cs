@@ -148,7 +148,9 @@ namespace WireFrameToRobot
         /// <returns></returns>
         public bool StrutInHolderExclusionZone()
         {
-            var anglebetweenWorldZandCutPlaneZ = OwnerNode.HolderFace.NormalAtParameter(.5,.5).AngleBetween(CutPlane.Normal);
+            var face = OwnerNode.HolderFace;
+            var anglebetweenWorldZandCutPlaneZ = face.NormalAtParameter(.5,.5).AngleBetween(CutPlane.Normal);
+            face.Dispose();
             if(anglebetweenWorldZandCutPlaneZ > 30)
             {
                 return false;

@@ -76,14 +76,16 @@ namespace WireFrameToRobot
         {
             get
             {
-
-                var surfPlane = Plane.ByOriginNormal(HolderFace.PointAtParameter(.5, .5), HolderFace.NormalAtParameter(.5, .5));
+                var face = HolderFace;
+                var surfPlane = Plane.ByOriginNormal(face.PointAtParameter(.5, .5), face.NormalAtParameter(.5, .5));
+                
                 var circle = Circle.ByPlaneRadius(surfPlane, 5);
                 var output = circle.ExtrudeAsSolid(5);
 
                 //dispose old stuff
                 surfPlane.Dispose();
                 circle.Dispose();
+                face.Dispose();
 
                 return output;
             }
@@ -213,8 +215,8 @@ namespace WireFrameToRobot
             unchecked
             {
                 var hash = 13;
-                hash = (hash * 7) + VectorRoundedString(pln.XAxis, digits).GetHashCode();
-                hash = (hash * 7) + VectorRoundedString(pln.YAxis, digits).GetHashCode();
+                //hash = (hash * 7) + VectorRoundedString(pln.XAxis, digits).GetHashCode();
+                //hash = (hash * 7) + VectorRoundedString(pln.YAxis, digits).GetHashCode();
                 hash = (hash * 7) + VectorRoundedString(pln.Normal, digits).GetHashCode();
 
                 return hash;
