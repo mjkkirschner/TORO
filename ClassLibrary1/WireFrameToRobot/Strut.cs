@@ -81,6 +81,22 @@ namespace WireFrameToRobot
                 return output;
             }
         }
+        /// <summary>
+        /// This returns the transformedCutPlane after its been rotated around the Z axis so that its X axis
+        /// aligns with guide vector - NOTE, this does not seem to work in all cases but apparently solves the
+        /// robot reach issues we were having
+        /// </summary>
+        /// <param name="alignTo"></param>
+        /// <returns></returns>
+        public Plane TransformedAndAlignedCutPlane([DefaultArgumentAttribute("Vector.ByCoordinates(1,0,0)")]Vector alignTo)
+        {
+            var p = this.TransformedCutPlane;
+            var dot = p.XAxis.Dot(alignTo);
+            double angle = Math.Acos(dot) * (-1) * (180 / Math.PI);
+            var output = p.Rotate(p.Origin, p.Normal, angle) as Plane;
+            p.Dispose();
+            return output;
+        }
 
         
         /// <summary>
