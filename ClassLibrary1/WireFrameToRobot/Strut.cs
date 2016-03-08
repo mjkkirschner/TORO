@@ -84,11 +84,11 @@ namespace WireFrameToRobot
 
         
         /// <summary>
-        /// attempts to find an aligned plane using marching
+        /// attempts to find an aligned plane such that the X axis of the cut plane matches the guide vector using rotation marching, gets a nearly ~aligned~ plane
         /// </summary>
         /// <param name="alignTo"></param>
         /// <returns></returns>
-        public Plane TransformedAndAlignedCutPlane([DefaultArgumentAttribute("Vector.ByCoordinates(1,0,0)")]Vector alignTo)
+        public Plane TransformedAndAlignedCutPlaneUsingMarching([DefaultArgumentAttribute("Vector.ByCoordinates(1,0,0)")]Vector alignTo)
         {
             var p = this.TransformedCutPlane;
             var random = new Random();
