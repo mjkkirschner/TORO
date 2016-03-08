@@ -82,6 +82,34 @@ namespace WireFrameToRobot
             }
         }
 
+        
+        /// <summary>
+        /// attempts to find an aligned plane such that the X axis of the cut plane matches the guide vector using rotation marching, gets a nearly ~aligned~ plane
+        /// </summary>
+        /// <param name="alignTo"></param>
+        /// <returns></returns>
+        public Plane TransformedAndAlignedCutPlaneUsingMarching([DefaultArgumentAttribute("Vector.ByCoordinates(1,0,0)")]Vector alignTo)
+        {
+            var p = this.TransformedCutPlane;
+            var random = new Random();
+            var max = 5.0;
+            var min = .0001;
+            var angle = random.NextDouble() * (max - min) + min;
+
+            var parentFit = Math.Abs(p.XAxis.Y);
+            //while the y component is not zero or the x alignment is facing opposite directions
+            while (parentFit > .01 || alignTo.Dot(p.XAxis) < 0  )
+            {
+                angle = random.NextDouble() * (max - min) + min;
+                var child = p.Rotate(p.Origin, p.Normal, angle) as Plane;
+                var childFit = Math.Abs(child.XAxis.Y);
+                p = child;
+                //recalculate parentFit
+                parentFit = Math.Abs(p.XAxis.Y);
+            }
+         return p;
+        }
+        
         public Solid GeometryToLabel
         {
             get
@@ -121,7 +149,9 @@ namespace WireFrameToRobot
         /// <returns></returns>
         public bool StrutInHolderExclusionZone()
         {
-            var anglebetweenWorldZandCutPlaneZ = OwnerNode.HolderFace.NormalAtParameter(.5,.5).AngleBetween(CutPlane.Normal);
+            var face = OwnerNode.HolderFace;
+            var anglebetweenWorldZandCutPlaneZ = face.NormalAtParameter(.5,.5).AngleBetween(CutPlane.Normal);
+            face.Dispose();
             if(anglebetweenWorldZandCutPlaneZ > 30)
             {
                 return false;

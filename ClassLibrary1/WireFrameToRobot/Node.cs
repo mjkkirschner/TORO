@@ -76,14 +76,16 @@ namespace WireFrameToRobot
         {
             get
             {
-
-                var surfPlane = Plane.ByOriginNormal(HolderFace.PointAtParameter(.5, .5), HolderFace.NormalAtParameter(.5, .5));
+                var face = HolderFace;
+                var surfPlane = Plane.ByOriginNormal(face.PointAtParameter(.5, .5), face.NormalAtParameter(.5, .5));
+                
                 var circle = Circle.ByPlaneRadius(surfPlane, 5);
                 var output = circle.ExtrudeAsSolid(5);
 
                 //dispose old stuff
                 surfPlane.Dispose();
                 circle.Dispose();
+                face.Dispose();
 
                 return output;
             }
@@ -213,8 +215,8 @@ namespace WireFrameToRobot
             unchecked
             {
                 var hash = 13;
-                hash = (hash * 7) + VectorRoundedString(pln.XAxis, digits).GetHashCode();
-                hash = (hash * 7) + VectorRoundedString(pln.YAxis, digits).GetHashCode();
+                //hash = (hash * 7) + VectorRoundedString(pln.XAxis, digits).GetHashCode();
+                //hash = (hash * 7) + VectorRoundedString(pln.YAxis, digits).GetHashCode();
                 hash = (hash * 7) + VectorRoundedString(pln.Normal, digits).GetHashCode();
 
                 return hash;
@@ -223,7 +225,7 @@ namespace WireFrameToRobot
 
         private static string VectorRoundedString(Vector vec,int digits)
         {
-            return "X" + Math.Round(vec.X, digits).ToString() + "Y" + Math.Round(vec.X, digits).ToString() + "Z" + Math.Round(vec.X, digits).ToString();
+            return "X" + Math.Round(vec.X, digits).ToString() + "Y" + Math.Round(vec.Y, digits).ToString() + "Z" + Math.Round(vec.Z, digits).ToString();
         }
 
         /// <summary>
@@ -382,7 +384,7 @@ namespace WireFrameToRobot
                         revd = Vector.ByCoordinates(0,0,1);
                     }
                     //reverse the normal so the top face is correct
-                     plane = Plane.ByOriginNormal(Center, revd);
+                     plane = Plane.ByOriginNormalXAxis(Center, revd, Vector.ByCoordinates(0,0,1));
                      newCs = CoordinateSystem.ByPlane(plane);
                    
                      output = originalGeometry.Transform(newCs) as Solid;
