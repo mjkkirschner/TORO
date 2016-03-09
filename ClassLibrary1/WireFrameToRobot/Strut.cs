@@ -3,9 +3,10 @@ using Autodesk.DesignScript.Runtime;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Autodesk.DesignScript.Interfaces;
 namespace WireFrameToRobot
 {
-    public class Strut:ILabelAble,IDisposable
+    public class Strut:ILabelAble,IDisposable,IGraphicItem
     {
         /// <summary>
         /// an ID generated based on the nodes this strut is connected to
@@ -198,6 +199,11 @@ namespace WireFrameToRobot
 
                 return hash;
             }
+        }
+
+        public void Tessellate(IRenderPackage package, TessellationParameters parameters)
+        {
+            StrutGeometry.Tessellate(package, parameters);
         }
     }
 }

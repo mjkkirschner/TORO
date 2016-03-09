@@ -19,7 +19,7 @@ namespace WireFrameToRobot
         AllNodesOrientedToWorldXYZ, AllNodesSameAsBaseGeo, AverageStrutsVector, OrientationProvided
     }
 
-    public class Node: ILabelAble,IDisposable
+    public class Node: ILabelAble,IDisposable,IGraphicItem
     {
         /// <summary>
         /// the center of the node
@@ -530,6 +530,11 @@ namespace WireFrameToRobot
             var output = geo.DifferenceAll(sub);
         
             return output;
+        }
+
+        public void Tessellate(IRenderPackage package, TessellationParameters parameters)
+        {
+            OrientedNodeGeometry.Tessellate(package, parameters);
         }
     }
 
