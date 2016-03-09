@@ -43,9 +43,9 @@ namespace WireFrameToRobot
         }
 
         /// <summary>
-        /// this plane represents the cut vector
+        /// this plane represents the cut vector on the strut, it's not transformed to the origin
         /// </summary>
-        private Plane CutPlane { get
+        private Plane CutPlaneOnStrut { get
             {
                 var coordinateSystemOnLine = LineRepresentation.CoordinateSystemAtParameter(0);
                 //reverse the normal because we want the plane normal to point towards the node
@@ -70,13 +70,13 @@ namespace WireFrameToRobot
         /// <summary>
         /// get the cut plane after it has been transformed around the origin (using the inverse transform of its owner node)
         /// </summary>
-        public Plane TransformedCutPlane
+        public Plane CutPlaneAtOrigin
         {
             get
             {
                 var cs = OwnerNode.OrientedNodeGeometry.ContextCoordinateSystem;
                 var inverse = cs.Inverse();
-                var output = CutPlane.Transform(inverse) as Plane;
+                var output = CutPlaneOnStrut.Transform(inverse) as Plane;
                 cs.Dispose();
                 inverse.Dispose();
                 return output;
@@ -89,9 +89,9 @@ namespace WireFrameToRobot
         /// </summary>
         /// <param name="alignTo"></param>
         /// <returns></returns>
-        public Plane TransformedAndAlignedCutPlane([DefaultArgumentAttribute("Vector.ByCoordinates(1,0,0)")]Vector alignTo)
+        internal Plane AlignedCutPlaneWithACos([DefaultArgumentAttribute("Vector.ByCoordinates(1,0,0)")]Vector alignTo)
         {
-            var p = this.TransformedCutPlane;
+            var p = this.CutPlaneAtOrigin;
             var dot = p.XAxis.Dot(alignTo);
             double angle = Math.Acos(dot) * (-1) * (180 / Math.PI);
             var output = p.Rotate(p.Origin, p.Normal, angle) as Plane;
@@ -104,9 +104,9 @@ namespace WireFrameToRobot
         /// The coordinateSystems will appear at the origin since they are transformed using the inverse
         /// </summary>
         /// <returns></returns>
-        public CoordinateSystem AlignedCoordinateSystem([DefaultArgumentAttribute("Vector.ByCoordinates(1,0,0)")]Vector alignTo)
+        public CoordinateSystem AlignedCoordinateSystemAtOrigin([DefaultArgumentAttribute("Vector.ByCoordinates(1,0,0)")]Vector alignTo)
         {
-            var plane = this.TransformedAndAlignedCutPlaneUsingMarching(alignTo);
+            var plane = this.AlignedCutPlaneAtOrigin(alignTo);
             var output = CoordinateSystem.ByPlane(plane);
             plane.Dispose();
             return output;
@@ -117,9 +117,9 @@ namespace WireFrameToRobot
         /// </summary>
         /// <param name="alignTo"></param>
         /// <returns></returns>
-        public Plane TransformedAndAlignedCutPlaneUsingMarching([DefaultArgumentAttribute("Vector.ByCoordinates(1,0,0)")]Vector alignTo)
+        public Plane AlignedCutPlaneAtOrigin([DefaultArgumentAttribute("Vector.ByCoordinates(1,0,0)")]Vector alignTo)
         {
-            var p = this.TransformedCutPlane;
+            var p = this.CutPlaneAtOrigin;
             var random = new Random();
             var max = 5.0;
             var min = .0001;
@@ -181,7 +181,7 @@ namespace WireFrameToRobot
         public bool StrutInHolderExclusionZone()
         {
             var face = OwnerNode.HolderFace;
-            var anglebetweenWorldZandCutPlaneZ = face.NormalAtParameter(.5,.5).AngleBetween(CutPlane.Normal);
+            var anglebetweenWorldZandCutPlaneZ = face.NormalAtParameter(.5,.5).AngleBetween(CutPlaneOnStrut.Normal);
             face.Dispose();
             if(anglebetweenWorldZandCutPlaneZ > 30)
             {

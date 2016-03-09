@@ -834,7 +834,7 @@ namespace Dynamo_TORO
                 List<Strut> failedStruts = new List<Strut>();
                 foreach (Strut s in node.Struts)
                 {
-                    Plane p = s.TransformedCutPlane;
+                    Plane p = s.CutPlaneAtOrigin;
                     double dot = p.Normal.Dot(guide);
                     double angle = Math.Acos(dot) * (180 / Math.PI);
                     if (angle > tolerance)
@@ -975,7 +975,7 @@ namespace Dynamo_TORO
                 List<Strut> failedStruts = new List<Strut>();
 
                 List<Strut> strutList = node.Struts;
-                List<Vector> normals = strutList.Select(p => p.TransformedCutPlane.Normal).ToList();
+                List<Vector> normals = strutList.Select(p => p.CutPlaneAtOrigin.Normal).ToList();
 
                 for (int i = 0; i < strutList.Count(); i++)
                 {
@@ -1640,7 +1640,7 @@ namespace Dynamo_TORO
                 foreach (Strut strut in node.Struts)
                 {
                     // setup names
-                    Plane hole = strut.TransformedCutPlane;
+                    Plane hole = strut.AlignedCutPlaneAtOrigin(Vector.ByCoordinates(1,0,0));
 
                     // create targets
                     targBuilder.Append(string.Format("\n"));

@@ -184,8 +184,8 @@ namespace WireFrameToRobot
             {
                 return false;
             }
-            var nodebPlanes = nodeb.Struts.Select(x => x.TransformedCutPlane);
-            return nodea.Struts.Select(x => x.TransformedCutPlane).All(x => nodebPlanes.Any(y => x.IsAlmostEqualTo(y)));
+            var nodebPlanes = nodeb.Struts.Select(x => x.CutPlaneAtOrigin);
+            return nodea.Struts.Select(x => x.CutPlaneAtOrigin).All(x => nodebPlanes.Any(y => x.IsAlmostEqualTo(y)));
         }
         /// <summary>
         /// hash a node using the xor of their planes hash
@@ -198,7 +198,7 @@ namespace WireFrameToRobot
                 int hash = 13;
                 foreach (var strut in Struts)
                 {
-                    var plane = strut.TransformedCutPlane;
+                    var plane = strut.CutPlaneAtOrigin;
                     hash = hash ^ PlaneTypeHash(plane, digits);
                 }
                 return hash;
