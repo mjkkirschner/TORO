@@ -99,6 +99,18 @@ namespace WireFrameToRobot
             return output;
         }
 
+        /// <summary>
+        /// This method returns a coordinateSystem from the TransformedAlignedCutPlane, this is useful for visualization
+        /// The coordinateSystems will appear at the origin since they are transformed using the inverse
+        /// </summary>
+        /// <returns></returns>
+        public CoordinateSystem AlignedCoordinateSystem([DefaultArgumentAttribute("Vector.ByCoordinates(1,0,0)")]Vector alignTo)
+        {
+            var plane = this.TransformedAndAlignedCutPlaneUsingMarching(alignTo);
+            var output = CoordinateSystem.ByPlane(plane);
+            plane.Dispose();
+            return output;
+        }
         
         /// <summary>
         /// attempts to find an aligned plane such that the X axis of the cut plane matches the guide vector using rotation marching, gets a nearly ~aligned~ plane
