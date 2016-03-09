@@ -119,6 +119,8 @@ namespace WireFrameToRobot
             {
                 angle = random.NextDouble() * (max - min) + min;
                 var child = p.Rotate(p.Origin, p.Normal, angle) as Plane;
+                //make sure to dispose the old plane
+                p.Dispose();
                 var childFit = Math.Abs(child.XAxis.Y);
                 p = child;
                 //recalculate parentFit
