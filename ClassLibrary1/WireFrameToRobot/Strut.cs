@@ -199,6 +199,7 @@ namespace WireFrameToRobot
             StrutGeometry.Dispose();
         }
 
+        [IsVisibleInDynamoLibrary(false)]
         /// <summary>
         /// a hashcode based on the string of the start and end point
         /// </summary>
@@ -214,7 +215,7 @@ namespace WireFrameToRobot
                 return hash;
             }
         }
-
+        [IsVisibleInDynamoLibrary(false)]
         public void Tessellate(IRenderPackage package, TessellationParameters parameters)
         {
             StrutGeometry.Tessellate(package, parameters);

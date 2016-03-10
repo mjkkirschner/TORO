@@ -8,6 +8,7 @@ using WireFrameToRobot.Extensions;
 using WireFrameToRobot.Topology;
 using Autodesk.DesignScript.Interfaces;
 using WireFrameToRobot;
+using Autodesk.DesignScript.Runtime;
 
 namespace WireFrameToRobot
 {
@@ -531,7 +532,7 @@ namespace WireFrameToRobot
         
             return output;
         }
-
+        [IsVisibleInDynamoLibrary(false)]
         public void Tessellate(IRenderPackage package, TessellationParameters parameters)
         {
             OrientedNodeGeometry.Tessellate(package, parameters);
