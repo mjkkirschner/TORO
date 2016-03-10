@@ -96,7 +96,7 @@ namespace WireFrameToRobot
         {
             get
             {
-               return NodeGeometry;
+               return OrientedNodeGeometry;
             }
         }
 
