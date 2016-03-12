@@ -360,7 +360,7 @@ namespace Dynamo_TORO
         /// <param name="shift">Shift value</param>
         /// <returns></returns>
         [MultiReturn(new[] { "sorted", "indices" })]
-        public static Dictionary<string, List<Object>> sortPolar2_Vector(List<Point> pointList, int shift = 0)
+        public static Dictionary<string, List<Object>> sortPolar2_Point(List<Point> pointList, int shift = 0)
         {
             List<Object> newList = new List<Object>();
             List<double> paramList = new List<double>();
@@ -497,6 +497,43 @@ namespace Dynamo_TORO
 
 
 
+        private static List<Object> sortPolar3_Plane(List<Plane> planeList, int shift = 0)
+        {
+            List<Object> newList = new List<Object>();
+            List<double> paramList = new List<double>();
+
+            List<double> vx = planeList.Select(p => p.Normal.X).ToList();
+            List<double> vy = planeList.Select(p => p.Normal.Y).ToList();
+            List<double> vz = planeList.Select(p => p.Normal.Z).ToList();
+
+            Vector vecAvg = Vector.ByCoordinates(vx.Average(), vy.Average(), vz.Average());
+            Circle guide = Circle.ByCenterPointRadiusNormal(Point.ByCoordinates(0, 0, 0), 1, vecAvg);
+            for (int i = 0; i < planeList.Count(); i++)
+            {
+                Point v = Point.ByCoordinates(vx[i], vy[i], vz[i]);
+                double param = guide.ParameterAtPoint(guide.ClosestPointTo(v));
+                paramList.Add(param);
+            }
+
+            var sortedParams = paramList
+                .Select((x, i) => new KeyValuePair<int, int>((int)x, i))
+                .OrderBy(x => x.Key)
+                .ToList();
+
+            List<Object> indices = sortedParams.Select(x => (Object)x.Value).ToList();
+            foreach (int i in indices) { newList.Add(planeList[i]); }
+
+            List<Object> shifted = new List<Object>();
+            if (shift < 0) { shift = newList.Count - shift % newList.Count - 1; }
+            if (Math.Abs(shift) >= newList.Count) { shift = shift % newList.Count; }
+            shifted = newList.GetRange(shift, newList.Count - shift);
+            shifted.AddRange(newList.GetRange(0, shift));
+
+            return newList;
+        }
+
+
+
         /// <summary>
         /// Sort coordinate systems by directionality about average pole and shift.
         /// </summary>
@@ -542,6 +579,66 @@ namespace Dynamo_TORO
                 {"indices", indices},
             };
         }
+
+
+        /*
+        /// <summary>
+        /// Sort planes by directionality about average pole and shift.
+        /// </summary>
+        /// <param name="nodeList">List of nodes</param>
+        /// <param name="shift">Shift value</param>
+        /// <returns></returns>
+        [MultiReturn(new[] { "sorted", "indices" })]
+        private static Dictionary<string, List<Object>> sortPolar2_Node(List<Node> nodeList, int shift = 0)
+        {
+            List<Object> newNodeList = new List<Object>();
+            List<Object> indicesList = new List<Object>();
+
+            List<List<Strut>> strutList = nodeList.Select(n => n.Struts).ToList();
+
+            foreach (List<Strut> struts in strutList)
+            {
+                List<Object> newList = new List<Object>();
+                List<double> paramList = new List<double>();
+
+                List<double> vx = struts.Select(s => s.TransformedCutPlane.Normal.X).ToList();
+                List<double> vy = struts.Select(s => s.TransformedCutPlane.Normal.Y).ToList();
+                List<double> vz = struts.Select(s => s.TransformedCutPlane.Normal.Z).ToList();
+
+                Vector vecAvg = Vector.ByCoordinates(vx.Average(), vy.Average(), vz.Average());
+                Circle guide = Circle.ByCenterPointRadiusNormal(Point.ByCoordinates(0, 0, 0), 1, vecAvg);
+                for (int i = 0; i < struts.Count(); i++)
+                {
+                    Point v = Point.ByCoordinates(vx[i], vy[i], vz[i]);
+                    double param = guide.ParameterAtPoint(guide.ClosestPointTo(v));
+                    paramList.Add(param);
+                }
+
+                var sortedParams = paramList
+                    .Select((x, i) => new KeyValuePair<int, int>((int)x, i))
+                    .OrderBy(x => x.Key)
+                    .ToList();
+
+                List<Object> indices = sortedParams.Select(x => (Object)x.Value).ToList();
+                foreach (int i in indices) { newList.Add(struts[i]); }
+
+                List<Object> shifted = new List<Object>();
+                if (shift < 0) { shift = newList.Count - shift % newList.Count - 1; }
+                if (Math.Abs(shift) >= newList.Count) { shift = shift % newList.Count; }
+                shifted = newList.GetRange(shift, newList.Count - shift);
+                shifted.AddRange(newList.GetRange(0, shift));
+
+                indicesList.Add(indices);
+                newNodeList.Add(shifted);
+            }
+
+            return new Dictionary<string, List<Object>>
+            {
+                {"sorted", newNodeList},
+                {"indices", indicesList}
+            };
+        }
+        */
 
 
 
@@ -820,7 +917,7 @@ namespace Dynamo_TORO
         /// <param name="guide">Guide vector (Default: World +ZAxis)</param>
         /// <param name="tolerance">Angular tolerance (degrees)</param>
         /// <returns></returns>
-        [MultiReturn(new[] { "passedNodes", "failedNodes", "passedStruts", "failedStruts" })]
+        [MultiReturn(new[] { "passedNodes", "failedNodes", "failedStruts" })]
         public static Dictionary<string, Object> testAngular1_Node(List<Node> nodeList, [DefaultArgumentAttribute("{Vector.ByCoordinates(0,0,1)}")] Vector guide, double tolerance = 120)
         {
             List<Node> passedNodes = new List<Node>();
@@ -864,7 +961,6 @@ namespace Dynamo_TORO
             {
                 {"passedNodes", passedNodes },
                 {"failedNodes", failedNodes },
-                {"passedStruts", passedStrutsList},
                 {"failedStruts", failedStrutsList}
             };
         }
@@ -961,7 +1057,7 @@ namespace Dynamo_TORO
         /// <param name="nodeList">List of nodes to test</param>
         /// <param name="tolerance">Angular tolerance (degrees)</param>
         /// <returns></returns>
-        [MultiReturn(new[] { "passedNodes", "failedNodes", "passedStruts", "failedStruts" })]
+        [MultiReturn(new[] { "passedNodes", "failedNodes", "failedStruts" })]
         public static Dictionary<string, Object> testAngular2_Node(List<Node> nodeList, double tolerance = 35)
         {
             List<Node> passedNodes = new List<Node>();
@@ -1010,7 +1106,6 @@ namespace Dynamo_TORO
             {
                 {"passedNodes", passedNodes },
                 {"failedNodes", failedNodes },
-                {"passedStruts", passedStrutsList},
                 {"failedStruts", failedStrutsList}
             };
         }
@@ -1098,6 +1193,34 @@ namespace Dynamo_TORO
             return nodeList;
         }
         */
+
+
+        /// <summary>
+        /// Reverse normal and retain rotation of plane.
+        /// </summary>
+        /// <param name="plane">Plane to flip</param>
+        /// <param name="retain">Retain X-Axis?</param>
+        /// <returns></returns>
+        private static Plane flip_Plane2(Plane plane, bool retain = true)
+        {
+            switch (retain)
+            {
+                case true:
+                    {
+                        Plane newPl = Plane.ByOriginNormalXAxis(plane.Origin, plane.Normal.Reverse(), plane.XAxis);
+                        plane = newPl;
+                        break;
+                    }
+                case false:
+                    {
+                        Plane newPl = Plane.ByOriginNormalXAxis(plane.Origin, plane.Normal.Reverse(), plane.XAxis.Reverse());
+                        plane = newPl;
+                        break;
+                    }
+            }
+            return plane;
+        }
+
 
 
         /// <summary>
@@ -1410,9 +1533,8 @@ namespace Dynamo_TORO
         /// <param name="holeFrames">Position of all holes per block</param>
         /// <param name="blockFrame">Position of block centroid</param>
         /// <param name="drillFrame">Position of drill tip</param>
-        /// <returns></returns>
-        [MultiReturn(new[] { "filePaths" })]
-        public static Dictionary<string, List<string>> createDrillRoutine1(string directory, string filePrefix, List<List<Plane>> holeFrames, Plane blockFrame, Plane drillFrame)
+        /// <returns>filePaths</returns>
+        public static List<string> createDrillRoutine1(string directory, string filePrefix, List<List<Plane>> holeFrames, Plane blockFrame, Plane drillFrame)
         {
             // create list of filenames
             List<string> outputFiles = new List<string>();
@@ -1503,10 +1625,7 @@ namespace Dynamo_TORO
             }
 
             // end step
-            return new Dictionary<string, List<string>>
-            {
-                {"filePaths", outputFiles}
-            };
+            return outputFiles;
         }
 
 
@@ -1520,9 +1639,8 @@ namespace Dynamo_TORO
         /// <param name="directory">Directory to write files ("C:\")</param>
         /// <param name="filePrefix">Convention for filename prefix ("Group_A")</param>
         /// <param name="holeFrames">Position of all holes per block</param>
-        /// <returns></returns>
-        [MultiReturn(new[] { "filePaths" })]
-        public static Dictionary<string, List<string>> createDrillRoutine2(string directory, string filePrefix, List<List<Plane>> holeFrames)
+        /// <returns>filePaths</returns>
+        public static List<string> createDrillRoutine2(string directory, string filePrefix, List<List<Plane>> holeFrames)
         {
             // create list of filenames
             List<string> outputFiles = new List<string>();
@@ -1604,24 +1722,19 @@ namespace Dynamo_TORO
                 }
             }
 
-            // end step
-            return new Dictionary<string, List<string>>
-            {
-                {"filePaths", outputFiles}
-            };
+            return outputFiles;
         }
 
 
-        
+
 
         /// <summary>
         /// Create routine for an ABB robot with stationary drill and mobile workpiece.
         /// </summary>
         /// <param name="directory">Directory to write files ("C:\")</param>
         /// <param name="nodes">A list of all your favorite nodes \m| </param>
-        /// <returns></returns>
-        [MultiReturn(new[] { "filePaths" })]
-        public static Dictionary<string, List<string>> createDrillRoutine3(string directory, List<Node> nodes)
+        /// <returns>filePaths</returns>
+        public static List<string> createDrillRoutine3(string directory, List<Node> nodes)
         {
             // create list of filenames
             List<string> outputFiles = new List<string>();
@@ -1637,17 +1750,29 @@ namespace Dynamo_TORO
                 int index = 0;
                 var targBuilder = new StringBuilder();
                 var moveBuilder = new StringBuilder();
+
                 foreach (Strut strut in node.Struts)
                 {
-                    // setup names
-                    Plane hole = strut.TransformedCutPlane;
+                    // setup target
+                    Plane hole = strut.TransformedAndAlignedCutPlaneUsingMarching(Vector.ByCoordinates(0,1,0));
+
+                    // perform correction
+                    hole = flip_Plane2(hole, false);
+                    if (hole.Normal.IsAlmostEqualTo(Vector.XAxis()))
+                    {
+                        hole = Plane.ByOriginNormalXAxis(hole.Origin, hole.Normal, hole.YAxis.Reverse());
+                    }
+                    if (hole.Normal.IsAlmostEqualTo(Vector.XAxis().Reverse()))
+                    {
+                        hole = Plane.ByOriginNormalXAxis(hole.Origin, hole.Normal, hole.YAxis);
+                    }
 
                     // create targets
                     targBuilder.Append(string.Format("\n"));
                     targBuilder.Append(string.Format("\n\t! {0};", strut.ID));
-                    targBuilder.Append(string.Format("\n\tVAR robtarget S{0}0 := {1};", index, rtarget((Plane)hole.Translate(hole.Normal, -120))));
-                    targBuilder.Append(string.Format("\n\tVAR robtarget S{0}1 := {1};", index, rtarget((Plane)hole.Translate(hole.Normal, -50))));
-                    targBuilder.Append(string.Format("\n\tVAR robtarget S{0}2 := {1};", index, rtarget((Plane)hole.Translate(hole.Normal, -10))));
+                    targBuilder.Append(string.Format("\n\tVAR robtarget S{0}0 := {1};", index, rtarget((Plane) (hole.Translate(hole.Normal, -100)))));
+                    targBuilder.Append(string.Format("\n\tVAR robtarget S{0}1 := {1};", index, rtarget((Plane) (hole.Translate(hole.Normal, -50) ))));
+                    targBuilder.Append(string.Format("\n\tVAR robtarget S{0}2 := {1};", index, rtarget((Plane) (hole.Translate(hole.Normal, -10) ))));
 
                     // create movement instructions
                     moveBuilder.Append(string.Format("\n"));
@@ -1680,11 +1805,9 @@ namespace Dynamo_TORO
                     r =
                         "MODULE MainModule" +
                         "\n" +
-
-                        "\n\t" + 
                         "\n\t" + "! " + node.ID.ToString() + "\n" + targBuilder.ToString() +
-                        "\n\n\t" +
-
+                        "\n" +
+                        "\n" +
                         "\n\t" + "! ROUTINE" +
                         "\n\t" + "PROC main()" +
                         "\n\t\t" + "ConfL\\Off;" +
@@ -1700,7 +1823,7 @@ namespace Dynamo_TORO
                         "\n\t\t" + "MoveAbsJ j1, v200, z5, tool0;" +
                         "\n\t\t" + "MoveAbsJ j0, v200, z5, tool0;" +
                         "\n" +
-                        "\n\t\t" + "TPWrite(\"Node complete!\");" +
+                        "\n\t\t" + "TPWrite(\"Node " + node.ID.ToString() + "complete!\");" +
                         "\n" +
                         "\n\t\t" + "Stop;" +
                         "\n\t" + "ENDPROC" +
@@ -1714,10 +1837,7 @@ namespace Dynamo_TORO
             }
 
             // end step
-            return new Dictionary<string, List<string>>
-            {
-                {"filePaths", outputFiles}
-            };
+            return outputFiles;
         }
 
 
