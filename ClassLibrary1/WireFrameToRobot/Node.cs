@@ -8,6 +8,7 @@ using WireFrameToRobot.Extensions;
 using WireFrameToRobot.Topology;
 using Autodesk.DesignScript.Interfaces;
 using WireFrameToRobot;
+using Autodesk.DesignScript.Runtime;
 
 namespace WireFrameToRobot
 {
@@ -19,7 +20,7 @@ namespace WireFrameToRobot
         AllNodesOrientedToWorldXYZ, AllNodesSameAsBaseGeo, AverageStrutsVector, OrientationProvided
     }
 
-    public class Node: ILabelAble,IDisposable
+    public class Node: ILabelAble,IDisposable,IGraphicItem
     {
         /// <summary>
         /// the center of the node
@@ -95,7 +96,7 @@ namespace WireFrameToRobot
         {
             get
             {
-               return NodeGeometry;
+               return OrientedNodeGeometry;
             }
         }
 
@@ -184,8 +185,8 @@ namespace WireFrameToRobot
             {
                 return false;
             }
-            var nodebPlanes = nodeb.Struts.Select(x => x.TransformedCutPlane);
-            return nodea.Struts.Select(x => x.TransformedCutPlane).All(x => nodebPlanes.Any(y => x.IsAlmostEqualTo(y)));
+            var nodebPlanes = nodeb.Struts.Select(x => x.CutPlaneAtOrigin);
+            return nodea.Struts.Select(x => x.CutPlaneAtOrigin).All(x => nodebPlanes.Any(y => x.IsAlmostEqualTo(y)));
         }
         /// <summary>
         /// hash a node using the xor of their planes hash
@@ -198,7 +199,7 @@ namespace WireFrameToRobot
                 int hash = 13;
                 foreach (var strut in Struts)
                 {
-                    var plane = strut.TransformedCutPlane;
+                    var plane = strut.CutPlaneAtOrigin;
                     hash = hash ^ PlaneTypeHash(plane, digits);
                 }
                 return hash;
@@ -530,6 +531,11 @@ namespace WireFrameToRobot
             var output = geo.DifferenceAll(sub);
         
             return output;
+        }
+        [IsVisibleInDynamoLibrary(false)]
+        public void Tessellate(IRenderPackage package, TessellationParameters parameters)
+        {
+            OrientedNodeGeometry.Tessellate(package, parameters);
         }
     }
 
