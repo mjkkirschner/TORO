@@ -559,26 +559,51 @@ namespace WireFrameToRobot
 
                 case OrientationStrategy.AverageStrutsAlignToStrut:
                     {
+                        Plane finalPlane;
                         //orient the cube based on the average normal of the incoming struts
                         var spoints = struts.Select(x => x.LineRepresentation.StartPoint).ToList();
                         var epoints = struts.Select(x => x.LineRepresentation.EndPoint).ToList();
                         var vectors = spoints.Zip(epoints, (x, y) => Vector.ByTwoPoints(x, y)).ToList();
                         var averageNorm = averageVector(vectors);
                         var revd = averageNorm.Reverse();
+
                         if (revd.IsAlmostEqualTo(Vector.ByCoordinates(0, 0, 0)))
                         {
                             revd = Vector.ByCoordinates(0, 0, 1);
                         }
                         //reverse the normal so the top face is correct
-                        var plane = Plane.ByOriginNormal(Center, revd);
+                        var plane = Plane.ByOriginNormalXAxis(Center, revd, Vector.ByCoordinates(0, 0, 1));
+                        var newCs = CoordinateSystem.ByPlane(plane);
+                        var newCSinv = newCs.Inverse();
+                        //transform all the curves back to the origin based on this new CS
 
-                        var firstStrutVec = vectors.First();
+                        var localVectors = vectors.Select(x => x.Transform(newCSinv)).ToList();
+                        var key = VectorListTypeHash(localVectors, 4);
 
-                        //rotate the plane until the x axis is aligned near the guide...
-                        var planeAligned = WireFrameToRobot.Extensions.GeometryExtensions.alignPlaneViaMarching(firstStrutVec, plane, .0001);
-                        var newCs = CoordinateSystem.ByPlane(planeAligned);
+                        //check if we've seen these vectors before
+                        //if we have never seen this set of struts, then add a new plane for it
+                        if (!tempNodeTypes.ContainsKey(key))
+                        {
+                            var firstStrut = localVectors.First();
+                            var averageNormLocal = averageVector(localVectors);
+                            var rev2 = averageNormLocal.Reverse();
+                            var realPlane = Plane.ByOriginNormal(Point.Origin(), rev2);
+                            var realPlaneAligned = WireFrameToRobot.Extensions.GeometryExtensions.alignPlaneViaMarching(firstStrut, realPlane, .001);
 
-                       var  output = originalGeometry.Transform(newCs) as Solid;
+                            finalPlane = realPlaneAligned.Transform(plane.ContextCoordinateSystem) as Plane;
+                            tempNodeTypes.Add(key, realPlaneAligned);
+                            rev2.Dispose();
+                            averageNormLocal.Dispose();
+                            realPlane.Dispose();
+                        }
+                        else
+                        {
+                            //if we have seen it, then just return whats there
+                            finalPlane = tempNodeTypes[key].Transform(plane.ContextCoordinateSystem) as Plane;
+                        }
+                        var finalCS = CoordinateSystem.ByPlane(finalPlane);
+
+                        var output = originalGeometry.Transform(finalCS) as Solid;
                         plane.Dispose();
                         newCs.Dispose();
                         spoints.ForEach(x => x.Dispose());
@@ -586,7 +611,9 @@ namespace WireFrameToRobot
                         vectors.ForEach(x => x.Dispose());
                         averageNorm.Dispose();
                         revd.Dispose();
-                        planeAligned.Dispose();
+                        finalPlane.Dispose();
+                        finalCS.Dispose();
+                        localVectors.ForEach(x => x.Dispose());
 
                         return output;
 
