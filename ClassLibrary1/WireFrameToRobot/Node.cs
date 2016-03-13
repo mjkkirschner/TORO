@@ -41,7 +41,8 @@ namespace WireFrameToRobot
         /// This strategy orients the nodes so that all struts vectors are averaged to produce
         /// a normal vector for a plane, the node is oriented to this plane, and the X axis of this plane is
         /// aligned as much as possible with the vector defined by the first strut in the node's
-        /// list of struts - This fails since struts are not ordered...:(
+        /// list of struts -struts are not ordered per node, so to get around this we atttempt to find
+        /// a similar set of struts that we've already seen and always use the same strut used for that "Type"
         /// </summary>
         AverageStrutsAlignToStrut,
         /// <summary>
