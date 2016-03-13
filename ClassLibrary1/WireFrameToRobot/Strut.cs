@@ -120,27 +120,12 @@ namespace WireFrameToRobot
         public Plane AlignedCutPlaneAtOrigin([DefaultArgumentAttribute("Vector.ByCoordinates(1,0,0)")]Vector alignTo)
         {
             var p = this.CutPlaneAtOrigin;
-            var random = new Random();
-            var max = 5.0;
-            var min = .0001;
-            var angle = random.NextDouble() * (max - min) + min;
-
-            var parentFit = Math.Abs(p.XAxis.Y);
-            //while the y component is not zero or the x alignment is facing opposite directions
-            while (parentFit > .01 || alignTo.Dot(p.XAxis) < 0  )
-            {
-                angle = random.NextDouble() * (max - min) + min;
-                var child = p.Rotate(p.Origin, p.Normal, angle) as Plane;
-                //make sure to dispose the old plane
-                p.Dispose();
-                var childFit = Math.Abs(child.XAxis.Y);
-                p = child;
-                //recalculate parentFit
-                parentFit = Math.Abs(p.XAxis.Y);
-            }
-         return p;
+            p = WireFrameToRobot.Extensions.GeometryExtensions.alignPlaneViaMarching(alignTo, p,.01);
+            return p;
         }
-        
+
+       
+
         public Solid GeometryToLabel
         {
             get
@@ -276,6 +261,30 @@ namespace WireFrameToRobot.Extensions
             oldgeo.ForEach(x => x.Dispose());
             return false;
             }
+
+        public static Plane alignPlaneViaMarching(Vector alignTo, Plane p, double tolerance)
+        {
+            var random = new Random();
+            var max = 5.0;
+            var min = .00001;
+            var angle = random.NextDouble() * (max - min) + min;
+
+            var parentFit = Math.Abs(p.XAxis.Y);
+            //while the y component is not zero or the x alignment is facing opposite directions
+            while (parentFit > tolerance || alignTo.Dot(p.XAxis) < 0)
+            {
+                angle = random.NextDouble() * (max - min) + min;
+                var child = p.Rotate(p.Origin, p.Normal, angle) as Plane;
+                //make sure to dispose the old plane
+                p.Dispose();
+                var childFit = Math.Abs(child.XAxis.Y);
+                p = child;
+                //recalculate parentFit
+                parentFit = Math.Abs(p.XAxis.Y);
+            }
+
+            return p;
+        }
 
     }
 }

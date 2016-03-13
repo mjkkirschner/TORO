@@ -16,8 +16,44 @@ namespace WireFrameToRobot
     /// a strategy for orientation of the node
     /// </summary>
     public enum OrientationStrategy
-    {
-        AllNodesOrientedToWorldXYZ, AllNodesSameAsBaseGeo, AverageStrutsVector, OrientationProvided
+    {/// <summary>
+    /// orients the node so that its XYZ are aligned with the world coordinate system 
+    /// </summary>
+        AllNodesOrientedToWorldXYZ,
+        /// <summary>
+        /// aligns the nodes so that they are the same as the coordinateSystem of baseNode geometry
+        /// </summary>
+        AllNodesSameAsBaseGeo,
+        /// <summary>
+        /// This strategy orients the nodes so that all struts vectors are averaged to produce
+        /// a normal vector for a plane, the node is oriented to this plane, but it's X and Y axes are
+        /// undefined.
+        /// </summary>
+        AverageStrutsVector,
+        /// <summary>
+        /// This strategy orients the nodes so that all struts vectors are averaged to produce
+        /// a normal vector for a plane, the node is oriented to this plane, and the X axis of this plane is
+        /// aligned exactly to the 0,0,1 axis. This means its possible that the computed average vector is not 
+        /// exactly used as the normal.
+        /// </summary>
+        AverageStrutsAlignToZExactly,
+        /// <summary>
+        /// This strategy orients the nodes so that all struts vectors are averaged to produce
+        /// a normal vector for a plane, the node is oriented to this plane, and the X axis of this plane is
+        /// aligned as much as possible with the vector defined by the first strut in the node's
+        /// list of struts - This fails since struts are not ordered...:(
+        /// </summary>
+        AverageStrutsAlignToStrut,
+        /// <summary>
+        /// This strategy orients the nodes so that all struts vectors are averaged to produce
+        /// a normal vector for a plane, the node is oriented to this plane, and an attempt is made to use the same x Axis
+        /// for the same configuration of struts so that these nodes are the same
+        /// </summary>
+        AverageStrutsFindTypes,
+        /// <summary>
+        /// this strategy is not implemented yet
+        /// </summary>
+        OrientationProvided
     }
 
     public class Node: ILabelAble,IDisposable,IGraphicItem
@@ -224,6 +260,25 @@ namespace WireFrameToRobot
             }
         }
 
+        /// <summary>
+        /// hash a set of vectors to x digits to produce a hashkey
+        /// </summary>
+        /// <param name="pln"></param>
+        /// <returns></returns>
+        private static int VectorListTypeHash(IEnumerable<Vector> vecs, int digits)
+        {
+            unchecked
+            {
+                var hash = 13;
+               foreach(var vec in vecs)
+                {
+                    hash = hash ^ VectorRoundedString(vec, digits).GetHashCode();
+                }
+              
+                return hash;
+            }
+        }
+
         private static string VectorRoundedString(Vector vec,int digits)
         {
             return "X" + Math.Round(vec.X, digits).ToString() + "Y" + Math.Round(vec.Y, digits).ToString() + "Z" + Math.Round(vec.Z, digits).ToString();
@@ -244,6 +299,7 @@ namespace WireFrameToRobot
             //prune all duplicate inputs from wireframe
             var prunedPoints = Point.PruneDuplicates(nodeCenters);
             var prunedLines = GeometryExtensions.PruneDuplicates(struts);
+            var types = new Dictionary<int, Plane>();
 
             //find the adjacentLines for each node
             var output = new List<Node>();
@@ -251,7 +307,7 @@ namespace WireFrameToRobot
             {
                 //find adjacent struts for this node
                 var intersectingLines = findAdjacentLines(centerPoint, prunedLines);
-                var currentNode = new Node("N"+currentId.ToString().PadLeft(4,'0'), centerPoint, baseNode, intersectingLines, strutDiameter, nodeOrientationStrategy);
+                var currentNode = new Node("N"+currentId.ToString().PadLeft(4,'0'), centerPoint, baseNode, intersectingLines, strutDiameter, nodeOrientationStrategy,types);
                
                 //get the most z face and store it as the holder face
                 var surfaces = baseNode.Explode().OfType<Surface>().OrderBy(x => x.PointAtParameter(.5, .5).Z).ToList();
@@ -294,7 +350,8 @@ namespace WireFrameToRobot
 
         public static List<Node> ByPointsLinesGeometries(List<Point> nodeCenters, List<Line> struts, List<Solid> Nodes)
         {
-            return ByPointsLinesAndGeoOrientationStrategy(nodeCenters, struts, 6, Cuboid.ByLengths(19, 19, 19), OrientationStrategy.AverageStrutsVector);
+            throw new NotImplementedException();
+            return ByPointsLinesAndGeoOrientationStrategy(nodeCenters, struts, 6, Cuboid.ByLengths(38,38,38), OrientationStrategy.OrientationProvided);
         }
 
 
@@ -327,7 +384,7 @@ namespace WireFrameToRobot
             return intersectingLines;
         }
 
-        private Node(string id, Point center, Solid nodeBaseGeo, List<Line> lines, double strutDiameter, OrientationStrategy strategy)
+        private Node(string id, Point center, Solid nodeBaseGeo, List<Line> lines, double strutDiameter, OrientationStrategy strategy, Dictionary<int,Plane> foundNodeTypes)
         {
             ID = id;
             originalGeometry = nodeBaseGeo;
@@ -338,76 +395,210 @@ namespace WireFrameToRobot
             //construct stuts from these new lines
             this.Struts = newlines.Select(x => new Strut(x, strutDiameter, this)).ToList();
             //calculate the orientation of the node based on the orientation strategy
-            this.OrientedNodeGeometry = orientNode(strategy, this.Struts);           
+            this.OrientedNodeGeometry = orientNode(strategy, this.Struts,ref foundNodeTypes);           
 
         }
 
-        private Solid orientNode(OrientationStrategy strategy, List<Strut> struts)
+        private Solid orientNode(OrientationStrategy strategy, List<Strut> struts, ref Dictionary<int,Plane> tempNodeTypes)
         {
             switch (strategy)
             {
+                
                 case OrientationStrategy.AllNodesOrientedToWorldXYZ:
-
+                    { 
                     var plane = Plane.ByOriginNormal(Center, Vector.ZAxis());
-                    var newCs = CoordinateSystem.ByPlane(plane);
+                var newCs = CoordinateSystem.ByPlane(plane);
 
-                    var output = originalGeometry.Transform(newCs) as Solid;
-                    plane.Dispose();
-                    newCs.Dispose();
+                var output = originalGeometry.Transform(newCs) as Solid;
+                plane.Dispose();
+                newCs.Dispose();
 
-                    return output;
-                    break;
-
+                return output;
+                break;
+            }
                 case OrientationStrategy.AllNodesSameAsBaseGeo:
+                    {
+                        var orgCs = originalGeometry.ContextCoordinateSystem;
+                        var plane = Plane.ByOriginNormal(Center, orgCs.ZAxis);
+                        var newCs = CoordinateSystem.ByPlane(plane);
 
-                    var orgCs = originalGeometry.ContextCoordinateSystem;
-                     plane = Plane.ByOriginNormal(Center,orgCs.ZAxis);
-                     newCs = CoordinateSystem.ByPlane(plane);
+                        var output = originalGeometry.Transform(newCs) as Solid;
+                        plane.Dispose();
+                        newCs.Dispose();
+                        orgCs.Dispose();
 
-                     output = originalGeometry.Transform(newCs) as Solid;
-                    plane.Dispose();
-                    newCs.Dispose();
-                    orgCs.Dispose();
-
-                    return output;
-                    break;
-
-                case OrientationStrategy.AverageStrutsVector:
-
-                    //orient the cube based on the average normal of the incoming struts
-                    var spoints = struts.Select(x => x.LineRepresentation.StartPoint).ToList();
-                    var epoints = struts.Select(x => x.LineRepresentation.EndPoint).ToList();
-                    var vectors = spoints.Zip(epoints, (x, y) => Vector.ByTwoPoints(x, y)).ToList();
-                    var averageNorm = averageVector(vectors);
-                    var revd = averageNorm.Reverse();
-                    if (revd.IsAlmostEqualTo(Vector.ByCoordinates(0, 0, 0)))
-                        {
-                        revd = Vector.ByCoordinates(0,0,1);
+                        return output;
+                        break;
                     }
-                    //reverse the normal so the top face is correct
-                     plane = Plane.ByOriginNormalXAxis(Center, revd, Vector.ByCoordinates(0,0,1));
-                     newCs = CoordinateSystem.ByPlane(plane);
-                   
-                     output = originalGeometry.Transform(newCs) as Solid;
-                    plane.Dispose();
-                    newCs.Dispose();
-                    spoints.ForEach(x => x.Dispose());
-                    epoints.ForEach(x => x.Dispose());
-                    vectors.ForEach(x => x.Dispose());
-                    averageNorm.Dispose();
-                    revd.Dispose();
+                case OrientationStrategy.AverageStrutsVector:
+                    {
+                        //orient the cube based on the average normal of the incoming struts
+                        var spoints = struts.Select(x => x.LineRepresentation.StartPoint).ToList();
+                        var epoints = struts.Select(x => x.LineRepresentation.EndPoint).ToList();
+                        var vectors = spoints.Zip(epoints, (x, y) => Vector.ByTwoPoints(x, y)).ToList();
+                        var averageNorm = averageVector(vectors);
+                        var revd = averageNorm.Reverse();
+                        if (revd.IsAlmostEqualTo(Vector.ByCoordinates(0, 0, 0)))
+                        {
+                            revd = Vector.ByCoordinates(0, 0, 1);
+                        }
+                        //reverse the normal so the top face is correct
+                        var plane = Plane.ByOriginNormal(Center, revd);
+                        var newCs = CoordinateSystem.ByPlane(plane);
+
+                        var output = originalGeometry.Transform(newCs) as Solid;
+                        plane.Dispose();
+                        newCs.Dispose();
+                        spoints.ForEach(x => x.Dispose());
+                        epoints.ForEach(x => x.Dispose());
+                        vectors.ForEach(x => x.Dispose());
+                        averageNorm.Dispose();
+                        revd.Dispose();
 
 
-                    return output;
+                        return output;
 
-                    break;
+                        break;
+                    }
+                case OrientationStrategy.AverageStrutsAlignToZExactly:
+                    {
+                        //orient the cube based on the average normal of the incoming struts
+                        var spoints = struts.Select(x => x.LineRepresentation.StartPoint).ToList();
+                        var epoints = struts.Select(x => x.LineRepresentation.EndPoint).ToList();
+                        var vectors = spoints.Zip(epoints, (x, y) => Vector.ByTwoPoints(x, y)).ToList();
+                        var averageNorm = averageVector(vectors);
+                        var revd = averageNorm.Reverse();
+                        if (revd.IsAlmostEqualTo(Vector.ByCoordinates(0, 0, 0)))
+                        {
+                            revd = Vector.ByCoordinates(0, 0, 1);
+                        }
+                        //reverse the normal so the top face is correct
+                        var plane = Plane.ByOriginNormalXAxis(Center, revd, Vector.ByCoordinates(0, 0, 1));
+                        var newCs = CoordinateSystem.ByPlane(plane);
+
+                        var output = originalGeometry.Transform(newCs) as Solid;
+                        plane.Dispose();
+                        newCs.Dispose();
+                        spoints.ForEach(x => x.Dispose());
+                        epoints.ForEach(x => x.Dispose());
+                        vectors.ForEach(x => x.Dispose());
+                        averageNorm.Dispose();
+                        revd.Dispose();
+
+
+                        return output;
+
+                        break;
+                    }
+                case OrientationStrategy.AverageStrutsFindTypes:
+                    {
+                        Plane finalPlane;
+                        //orient the cube based on the average normal of the incoming struts
+                        var spoints = struts.Select(x => x.LineRepresentation.StartPoint).ToList();
+                        var epoints = struts.Select(x => x.LineRepresentation.EndPoint).ToList();
+                        var vectors = spoints.Zip(epoints, (x, y) => Vector.ByTwoPoints(x, y)).ToList();
+                        var averageNorm = averageVector(vectors);
+                        var revd = averageNorm.Reverse();
+
+                        if (revd.IsAlmostEqualTo(Vector.ByCoordinates(0, 0, 0)))
+                        {
+                            revd = Vector.ByCoordinates(0, 0, 1);
+                        }
+                        //reverse the normal so the top face is correct
+                        var plane = Plane.ByOriginNormalXAxis(Center, revd, Vector.ByCoordinates(0, 0, 1));
+                        var newCs = CoordinateSystem.ByPlane(plane);
+                        var newCSinv = newCs.Inverse();
+                        //transform all the curves back to the origin based on this new CS
+
+                        var localVectors = vectors.Select(x => x.Transform(newCSinv)).ToList();
+                        var key = VectorListTypeHash(localVectors, 4);
+
+                        //check if we've seen these vectors before
+
+
+                        //if we have never seen this set of struts, then add a new plane for it
+                        if (!tempNodeTypes.ContainsKey(key))
+                        {
+                            var averageNormLocal = averageVector(localVectors);
+                            var rev2 = averageNormLocal.Reverse();
+                            var realPlane = Plane.ByOriginNormal(Point.Origin(), rev2);
+                            finalPlane = realPlane.Transform(plane.ContextCoordinateSystem) as Plane;
+                            tempNodeTypes.Add(key, realPlane);
+                            rev2.Dispose();
+                            averageNormLocal.Dispose();
+                        }
+                        else
+                        {
+                            //if we have seen it, then just return whats there
+                            finalPlane = tempNodeTypes[key].Transform(plane.ContextCoordinateSystem) as Plane;
+                        }
+                        var finalCS = CoordinateSystem.ByPlane(finalPlane);
+
+                        var output = originalGeometry.Transform(finalCS) as Solid;
+                        plane.Dispose();
+                        newCs.Dispose();
+                        spoints.ForEach(x => x.Dispose());
+                        epoints.ForEach(x => x.Dispose());
+                        vectors.ForEach(x => x.Dispose());
+                        averageNorm.Dispose();
+                        revd.Dispose();
+                        finalPlane.Dispose();
+                        finalCS.Dispose();
+                        localVectors.ForEach(x => x.Dispose());
+
+                        return output;
+
+                        break;
+                    }
 
                 case OrientationStrategy.OrientationProvided:
+                    {
+                        throw new NotImplementedException();
+                        break;
+                    }
 
-                    break;
+                case OrientationStrategy.AverageStrutsAlignToStrut:
+                    {
+                        //orient the cube based on the average normal of the incoming struts
+                        var spoints = struts.Select(x => x.LineRepresentation.StartPoint).ToList();
+                        var epoints = struts.Select(x => x.LineRepresentation.EndPoint).ToList();
+                        var vectors = spoints.Zip(epoints, (x, y) => Vector.ByTwoPoints(x, y)).ToList();
+                        var averageNorm = averageVector(vectors);
+                        var revd = averageNorm.Reverse();
+                        if (revd.IsAlmostEqualTo(Vector.ByCoordinates(0, 0, 0)))
+                        {
+                            revd = Vector.ByCoordinates(0, 0, 1);
+                        }
+                        //reverse the normal so the top face is correct
+                        var plane = Plane.ByOriginNormal(Center, revd);
+
+                        var firstStrutVec = vectors.First();
+
+                        //rotate the plane until the x axis is aligned near the guide...
+                        var planeAligned = WireFrameToRobot.Extensions.GeometryExtensions.alignPlaneViaMarching(firstStrutVec, plane, .0001);
+                        var newCs = CoordinateSystem.ByPlane(planeAligned);
+
+                       var  output = originalGeometry.Transform(newCs) as Solid;
+                        plane.Dispose();
+                        newCs.Dispose();
+                        spoints.ForEach(x => x.Dispose());
+                        epoints.ForEach(x => x.Dispose());
+                        vectors.ForEach(x => x.Dispose());
+                        averageNorm.Dispose();
+                        revd.Dispose();
+                        planeAligned.Dispose();
+
+                        return output;
+
+                        break;
+                    }
+              
                 default:
-                    return NodeGeometry;
-                    break;
+                    {
+                        return NodeGeometry;
+                        break;
+                    }
+                   
             }
             //eh?
             return NodeGeometry;
