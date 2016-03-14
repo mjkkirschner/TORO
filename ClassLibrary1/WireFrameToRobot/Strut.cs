@@ -17,6 +17,11 @@ namespace WireFrameToRobot
         /// </summary>
         public Line LineRepresentation { get; private set; }
         /// <summary>
+        /// a line representation which represents the trimmed strut taking into account the drill depth
+        /// of the owner Node
+        /// </summary>
+        public Line TrimmedLineRepresentation { get; private set; }
+        /// <summary>
         /// the node which this strut object belongs to
         /// </summary>
         public Node OwnerNode { get; private set; }
@@ -155,23 +160,47 @@ namespace WireFrameToRobot
         /// <param name="line"></param>
         /// <param name="diameter"></param>
         /// <param name="owner"></param>
-        public Strut(Line line, double diameter, Node owner)
+        internal Strut(Line line, double diameter, Node owner)
         {
             LineRepresentation = line;
             OwnerNode = owner;
             Diameter = diameter; //mm
+            
+        }
 
+        internal void computeStrutGeometry()
+        {
             //construct a swept tube along the strut line
-            var startPlane = LineRepresentation.PlaneAtParameter(0);
+            var startPlane = TrimmedLineRepresentation.PlaneAtParameter(0);
             var circle = Circle.ByPlaneRadius(startPlane, Diameter / 2);
-            var swept = circle.SweepAsSolid(LineRepresentation);
+            var swept = circle.SweepAsSolid(TrimmedLineRepresentation);
             circle.Dispose();
             startPlane.Dispose();
             StrutGeometry = swept;
         }
+
         internal void SetId(string id)
         {
             ID = id;
+        }
+
+        internal void computeTrimmedLine(Node node1, Node node2)
+        {
+            var line = LineRepresentation;
+            var trim1 = line.Trim(node1.OrientedNodeGeometry, node1.Center).First() as Curve;
+            var trim2 = trim1.Trim(node2.OrientedNodeGeometry, node2.Center).First() as Curve;
+
+            var extend1 = trim2.ExtendStart(node1.DrillDepth);
+            var extend2 = extend1.ExtendEnd(node2.DrillDepth);
+
+            var output = Line.ByStartPointEndPoint(extend2.StartPoint, extend2.EndPoint);
+            this.TrimmedLineRepresentation = output;
+
+            trim1.Dispose();
+            trim2.Dispose();
+            extend1.Dispose();
+            extend2.Dispose();
+            
         }
 
         /// <summary>
@@ -220,7 +249,57 @@ namespace WireFrameToRobot
         {
             StrutGeometry.Tessellate(package, parameters);
         }
+        /// <summary>
+        /// calculate the wasted strut length by finding the first remaining material we can use
+        /// this does not give us the optimal solution, but a good general metric
+        /// </summary>
+        /// <param name="numberOfStrut"> number of struts of the strut length we have at the start of the operation</param>
+        /// <param name="lengthOfStruts"> the length of a standard uncut strut</param>
+        /// <param name="nodesToCut"> finds the unique struts of this list of nodes and calculates based on that</param>
+        /// <returns></returns>
+        public static double CalculateWastedStrutLengthByNodes(int numberOfStrut,double lengthOfStruts, List<Node> nodesToCut)
+        {
+           var struts=  Node.FindUniqueStruts(nodesToCut);
+            return CalculateWastedStrutLengthByStruts(numberOfStrut, lengthOfStruts, struts);
+        }
+        /// <summary>
+        /// calculate the wasted strut length by finding the first remaining material we can use
+        /// this does not give us the optimal solution, but a good general metric
+        /// </summary>
+        /// <param name="numberOfStrut"> number of struts of the strut length we have at the start of the operation</param>
+        /// <param name="lengthOfStruts"> the length of a standard uncut strut</param>
+        /// <param name="strutsToCut">the struts to make, duplicates are not removed from this list</param>
+        /// <returns></returns>
+        public static double CalculateWastedStrutLengthByStruts(int numberOfStrut, double lengthOfStruts, List<Strut> strutsToCut)
+        {
+            //create a list of lengths which we will subtract from, these represent the raw struts we can cut from
+            var lengths = new List<double>();
+            foreach(var index in Enumerable.Range(0, numberOfStrut))
+            {
+                lengths.Add(lengthOfStruts);
+            }
+
+            //now iterate each strut which we need to construct,
+            foreach(var strutToCut in strutsToCut)
+            {
+                //foreach one, subtract its real length from the first remaining strut in the lengths list in which it will fit 
+                //that constraint means, the last length which has len > strut.len
+                var strutLen = strutToCut.TrimmedLineRepresentation.Length;
+                var lenIndex = lengths.FindIndex(x => x > strutLen);
+                //if we cannot find a length - we need to throw an exception that we cant cut this many struts
+                if (lenIndex == -1)
+                {
+                    throw new InvalidOperationException("could not find any remanining struts to cut this strut from");
+                }
+                lengths[lenIndex] = lengths[lenIndex] - strutLen;
+                
+            }
+            //foreach length which is not equal to its original length  - sum them, and return this sum as waste
+            return lengths.Where(x => Math.Abs(x - lengthOfStruts) > 0.000001).Sum();
+        }
     }
+
+   
 }
 namespace WireFrameToRobot.Extensions
 {

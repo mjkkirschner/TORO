@@ -91,7 +91,10 @@ namespace WireFrameToRobot
                 return output;
             }
         }
-
+        /// <summary>
+        /// the depth a strut should extend through the surface of the node
+        /// </summary>
+        public double DrillDepth { get; private set; }
         public Solid GeometryToLabel
         {
             get
@@ -234,11 +237,14 @@ namespace WireFrameToRobot
         /// to each node, orient them correctly, and constructs a geometric representation of the individual nodes
         /// from some base geometry which is oriented in a variety of ways
         /// </summary>
-        /// <param name="nodeCenters"></param>
-        /// <param name="Struts"></param>
-        /// <param name=""></param>
+        /// <param name="nodeCenters"> the points where the nodes are positioned</param>
+        /// <param name="struts"> the lines that represent the struts, these must be intersecting the points at their endpoints</param>
+        /// <param name="strutDiameter"> the diameter of the struts</param>
+        /// <param name="drillDepth"> the depth that a strut should be sunk into the surface of node</param>
+        /// <param name="baseNode"></param>
+        /// <param name="nodeOrientationStrategy"></param>
         /// <returns></returns>
-        public static List<Node> ByPointsLinesAndGeoOrientationStrategy(List<Point> nodeCenters, List<Line> struts, double strutDiameter, Solid baseNode, OrientationStrategy nodeOrientationStrategy)
+        public static List<Node> ByPointsLinesAndGeoOrientationStrategy(List<Point> nodeCenters, List<Line> struts, double strutDiameter, Solid baseNode, OrientationStrategy nodeOrientationStrategy, double drillDepth = 12.7)
         {
             int currentId = 1;
             //prune all duplicate inputs from wireframe
@@ -251,7 +257,7 @@ namespace WireFrameToRobot
             {
                 //find adjacent struts for this node
                 var intersectingLines = findAdjacentLines(centerPoint, prunedLines);
-                var currentNode = new Node("N"+currentId.ToString().PadLeft(4,'0'), centerPoint, baseNode, intersectingLines, strutDiameter, nodeOrientationStrategy);
+                var currentNode = new Node("N"+currentId.ToString().PadLeft(4,'0'), centerPoint, baseNode, intersectingLines, strutDiameter, drillDepth, nodeOrientationStrategy);
                
                 //get the most z face and store it as the holder face
                 var surfaces = baseNode.Explode().OfType<Surface>().OrderBy(x => x.PointAtParameter(.5, .5).Z).ToList();
@@ -267,7 +273,8 @@ namespace WireFrameToRobot
                 i++;
             }
            
-            //from the set of nodes, find the unique struts and use these to update the ids of the struts
+            //from the set of nodes, find the unique struts and use these to update the ids of the struts as well as trim the lines to the correct length
+            // and update the final strut geometry
             var graphEdges = UniqueStruts(output);
             foreach(var edge in graphEdges)
             {
@@ -286,6 +293,8 @@ namespace WireFrameToRobot
                 foreach (var strut in edge.GeometryEdges)
                 {
                     strut.SetId(id);
+                    strut.computeTrimmedLine(nodeA, nodeB);
+                    strut.computeStrutGeometry();
                 }
             }
            
@@ -327,11 +336,12 @@ namespace WireFrameToRobot
             return intersectingLines;
         }
 
-        private Node(string id, Point center, Solid nodeBaseGeo, List<Line> lines, double strutDiameter, OrientationStrategy strategy)
+        private Node(string id, Point center, Solid nodeBaseGeo, List<Line> lines, double strutDiameter, double drillDepth, OrientationStrategy strategy)
         {
             ID = id;
             originalGeometry = nodeBaseGeo;
             Center = center;
+            DrillDepth = drillDepth;
 
             //orient the struts so they all point away from the node
             var newlines = lines.Select(x => pointAway(center, x)).ToList();
