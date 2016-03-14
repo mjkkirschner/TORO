@@ -11,4 +11,4 @@
 "engine_metadata":"",
 "engine":"dynamo",
 "contains_binaries":true,
-"node_libraries":["WireFrameToRobot, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null","DYNAMO_TORO, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null"]}
+"node_libraries":["aWireFrameToRobot, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null","DYNAMO_TORO, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null"]}

@@ -60,9 +60,9 @@
     <None Include="ClassDiagram1.cd" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\WireFrameToRobot\WireFrameToRobot.csproj">
+    <ProjectReference Include="..\WireFrameToRobot\aWireFrameToRobot.csproj">
       <Project>{ae48041c-739c-4609-9830-2649147edfed}</Project>
-      <Name>WireFrameToRobot</Name>
+      <Name>aWireFrameToRobot</Name>
       <Private>False</Private>
     </ProjectReference>
   </ItemGroup>
