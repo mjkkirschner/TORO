@@ -18,7 +18,7 @@ namespace Dynamo_TORO
     /// <summary>
     /// testing
     /// </summary>
-    public class WIP_Welding
+    internal class WIP_Welding
     {
 
         
