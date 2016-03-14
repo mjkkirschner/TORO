@@ -62,8 +62,12 @@
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
-  </Target>
+    -->
   <Target Name="AfterBuild">
+    <ItemGroup>
+      <PackageFiles Include="$(OutDir)\WireFrameToRobot.dll;$(OutDir)\WireFrameToRobot.XML;$(OutDir)\DynamoText.dll;" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PackageFiles)" DestinationFolder="$(SolutionDir)..\dynamo_package\DynamoToro\bin\" />
   </Target>
-  -->
+
 </Project>

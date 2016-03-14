@@ -63,14 +63,14 @@
     <ProjectReference Include="..\WireFrameToRobot\WireFrameToRobot.csproj">
       <Project>{ae48041c-739c-4609-9830-2649147edfed}</Project>
       <Name>WireFrameToRobot</Name>
+      <Private>False</Private>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
   <Target Name="AfterBuild">
+    <ItemGroup>
+      <PackageFiles Include="$(OutDir)\DYNAMO_TORO.dll;$(OutDir)\DYNAMO_TORO.XML;$(OutDir)\ABB.Robotics.Controllers.PC.dll;" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PackageFiles)" DestinationFolder="$(SolutionDir)..\dynamo_package\DynamoToro\bin\" />
   </Target>
-  -->
 </Project>
