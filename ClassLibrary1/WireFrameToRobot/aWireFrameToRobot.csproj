@@ -8,7 +8,7 @@
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>WireFrameToRobot</RootNamespace>
-    <AssemblyName>WireFrameToRobot</AssemblyName>
+    <AssemblyName>aWireFrameToRobot</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -20,7 +20,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Debug\WireFrameToRobot.XML</DocumentationFile>
+    <DocumentationFile>bin\Debug\aWireFrameToRobot.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -62,8 +62,11 @@
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
-  </Target>
+    -->
   <Target Name="AfterBuild">
+    <ItemGroup>
+      <PackageFiles Include="$(OutDir)\aWireFrameToRobot.dll;$(OutDir)\aWireFrameToRobot.XML;$(OutDir)\DynamoText.dll;" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PackageFiles)" DestinationFolder="$(SolutionDir)..\dynamo_package\DynamoToro\bin\" />
   </Target>
-  -->
 </Project>
