@@ -449,6 +449,91 @@ namespace Dynamo_TORO
 
 
 
+
+
+        /// <summary>
+        /// Sort planes by directionality about average pole and shift.
+        /// </summary>
+        /// <param name="planeList">List of planes</param>
+        /// <param name="shift">Shift value</param>
+        /// <returns></returns>
+        private static List<Plane> sortPolar3_Plane(List<Plane> planeList, int shift = 0)
+        {
+            List<Plane> newList = new List<Plane>();
+            List<double> paramList = new List<double>();
+
+            List<double> vx = planeList.Select(p => p.Normal.X).ToList();
+            List<double> vy = planeList.Select(p => p.Normal.Y).ToList();
+            List<double> vz = planeList.Select(p => p.Normal.Z).ToList();
+
+            Vector vecAvg = Vector.ByCoordinates(vx.Average(), vy.Average(), vz.Average());
+            Circle guide = Circle.ByCenterPointRadiusNormal(Point.ByCoordinates(0, 0, 0), 1, vecAvg);
+            for (int i = 0; i < planeList.Count(); i++)
+            {
+                Point v = Point.ByCoordinates(vx[i], vy[i], vz[i]);
+                double param = guide.ParameterAtPoint(guide.ClosestPointTo(v));
+                paramList.Add(param);
+            }
+
+            var sortedParams = paramList
+                .Select((x, i) => new KeyValuePair<int, int>((int)x, i))
+                .OrderBy(x => x.Key)
+                .ToList();
+
+            List<Object> indices = sortedParams.Select(x => (Object)x.Value).ToList();
+            foreach (int i in indices) { newList.Add(planeList[i]); }
+
+            List<Plane> shifted = new List<Plane>();
+            if (shift < 0) { shift = newList.Count - shift % newList.Count - 1; }
+            if (Math.Abs(shift) >= newList.Count) { shift = shift % newList.Count; }
+            shifted = newList.GetRange(shift, newList.Count - shift);
+            shifted.AddRange(newList.GetRange(0, shift));
+
+            return shifted;
+        }
+
+        /// <summary>
+        /// Sort planes by directionality about average pole and shift.
+        /// </summary>
+        /// <param name="planeList">List of planes</param>
+        /// <param name="shift">Shift value</param>
+        /// <returns></returns>
+        private static List<int> sortPolar3_Index(List<Plane> planeList, int shift = 0)
+        {
+            List<Plane> newList = new List<Plane>();
+            List<double> paramList = new List<double>();
+
+            List<double> vx = planeList.Select(p => p.Normal.X).ToList();
+            List<double> vy = planeList.Select(p => p.Normal.Y).ToList();
+            List<double> vz = planeList.Select(p => p.Normal.Z).ToList();
+
+            Vector vecAvg = Vector.ByCoordinates(vx.Average(), vy.Average(), vz.Average());
+            Circle guide = Circle.ByCenterPointRadiusNormal(Point.ByCoordinates(0, 0, 0), 1, vecAvg);
+            for (int i = 0; i < planeList.Count(); i++)
+            {
+                Point v = Point.ByCoordinates(vx[i], vy[i], vz[i]);
+                double param = guide.ParameterAtPoint(guide.ClosestPointTo(v));
+                paramList.Add(param);
+            }
+
+            var sortedParams = paramList
+                .Select((x, i) => new KeyValuePair<int, int>((int)x, i))
+                .OrderBy(x => x.Key)
+                .ToList();
+
+            List<int> indices = sortedParams.Select(x => (int) x.Value).ToList();
+            foreach (int i in indices) { newList.Add(planeList[i]); }
+
+            List<Plane> shifted = new List<Plane>();
+            if (shift < 0) { shift = newList.Count - shift % newList.Count - 1; }
+            if (Math.Abs(shift) >= newList.Count) { shift = shift % newList.Count; }
+            shifted = newList.GetRange(shift, newList.Count - shift);
+            shifted.AddRange(newList.GetRange(0, shift));
+
+            return indices;
+        }
+
+
         /// <summary>
         /// Sort planes by directionality about average pole and shift.
         /// </summary>
@@ -1785,25 +1870,68 @@ namespace Dynamo_TORO
                 outputFiles.Add(filename);
 
                 // setup  sub
-                int index = 0;
                 var targBuilder = new StringBuilder();
                 var moveBuilder = new StringBuilder();
 
-                foreach (Strut strut in node.Struts)
+                // sort planes
+                //List<Plane> strutPlanes = node.Struts.Select(s => s.AlignedCutPlaneAtOrigin(Vector.ByCoordinates(0, 1, 0))).ToList();
+                List<Plane> strutPlanes = node.Struts.Select(s => s.CutPlaneAtOrigin).ToList();
+                List<Plane> sortedPlanes = sortPolar3_Plane(strutPlanes, 0);
+                List<int> sortedIndices = sortPolar3_Index(strutPlanes, 0);
+
+                for (int index = 0; index < strutPlanes.Count; index++)
                 {
-                    // setup target
-                    Plane hole = strut.AlignedCutPlaneAtOrigin(Vector.ByCoordinates(0, 1, 0));
+                    // get this plane
+                    Plane plane = sortedPlanes[index];
+                    string identity = node.Struts[sortedIndices[index]].ID;
 
                     // perform correction
-                    hole = flip_Plane2(hole, false);
-                    if (hole.Normal.IsAlmostEqualTo(Vector.XAxis()))
+                    Plane flippedPlane = flip_Plane2(plane, true);
+                    Plane hole = Plane.ByOriginNormalXAxis(flippedPlane.Origin, flippedPlane.Normal, flippedPlane.YAxis);
+                    if (Math.Abs(hole.Normal.Y) < hole.Normal.X)
                     {
-                        hole = Plane.ByOriginNormalXAxis(hole.Origin, hole.Normal, hole.YAxis.Reverse());
+                        hole = (Plane) hole.Rotate(hole, -90);
                     }
-                    if (hole.Normal.IsAlmostEqualTo(Vector.XAxis().Reverse()))
+
+                    // setup target
+                    //Plane hole = strut.AlignedCutPlaneAtOrigin(Vector.ByCoordinates(0, 1, 0));
+
+                    // create targets
+                    targBuilder.Append(string.Format("\n"));
+                    targBuilder.Append(string.Format("\n\t! {0};", identity));
+                    targBuilder.Append(string.Format("\n\tVAR robtarget S{0}0 := {1};", index, rtarget((Plane)(hole.Translate(hole.Normal, -100)))));
+                    targBuilder.Append(string.Format("\n\tVAR robtarget S{0}1 := {1};", index, rtarget((Plane)(hole.Translate(hole.Normal, -50)))));
+                    targBuilder.Append(string.Format("\n\tVAR robtarget S{0}2 := {1};", index, rtarget((Plane)(hole.Translate(hole.Normal, -10)))));
+
+                    // create movement instructions
+                    moveBuilder.Append(string.Format("\n"));
+                    moveBuilder.Append(string.Format("\n\t\tTPWrite(\"Drilling... {0}, {1} of {2}.\");", identity, index + 1, node.Struts.Count()));
+                    moveBuilder.Append(string.Format("\n\t\tMoveL S{0}0, {1}, {2}, drill\\WObj:=block;", index, "v200", "z30"));
+                    moveBuilder.Append(string.Format("\n\t\tMoveL S{0}1, {1}, {2}, drill\\WObj:=block;", index, "v100", "z5"));
+                    moveBuilder.Append(string.Format("\n\t\tMoveL S{0}2, {1}, {2}, drill\\WObj:=block;", index, "rate", "fine"));
+                    moveBuilder.Append(string.Format("\n\t\tMoveL S{0}1, {1}, {2}, drill\\WObj:=block;", index, "rate", "fine"));
+                    moveBuilder.Append(string.Format("\n\t\tMoveL S{0}0, {1}, {2}, drill\\WObj:=block;", index, "v100", "z5"));
+                    //moveBuilder.Append(string.Format("\n\t\tMoveL RelTool(S{0}0, 0, 50, 0), {1}, {2}, drill\\WObj:=block;", index, "v200", "z30"));
+
+                    // create safe movement to next
+                    if (index < node.Struts.Count() - 1)
                     {
-                        hole = Plane.ByOriginNormalXAxis(hole.Origin, hole.Normal, hole.YAxis);
+                        //moveBuilder.Append(string.Format("\n\t\tMoveAbsJ CalcJointT(RelTool(S{0}0, 0, 50, 0), drill\\WObj:=block), {1}, {2}, drill\\WObj:=block;", index + 1, "v200", "z5"));
+                        moveBuilder.Append(string.Format("\n\t\tMoveAbsJ CalcJointT(S{0}0, drill\\WObj:=block), {1}, {2}, drill\\WObj:=block;", index + 1, "v200", "z5"));
                     }
+                }
+
+                /*
+                foreach (Strut strut in node.Struts)
+                {
+
+                    // perform correction
+                    Plane plane = strut.AlignedCutPlaneAtOrigin(Vector.ByCoordinates(0, 1, 0));
+                    Plane flippedPlane = flip_Plane2(plane, true);
+                    Plane hole = Plane.ByOriginNormalXAxis(flippedPlane.Origin, flippedPlane.Normal, flippedPlane.YAxis);
+
+                    // setup target
+                    //Plane hole = strut.AlignedCutPlaneAtOrigin(Vector.ByCoordinates(0, 1, 0));
 
                     // create targets
                     targBuilder.Append(string.Format("\n"));
@@ -1832,6 +1960,7 @@ namespace Dynamo_TORO
                     // update index
                     index += 1;
                 }
+                */
 
                 //targBuilder.Append(string.Format("\n"));
                 //targBuilder.Append(string.Format("\n\tVAR jointtarget j0 := {0};", jtarget(-135, 0, 0, 90, 90, 0)));
@@ -1881,6 +2010,115 @@ namespace Dynamo_TORO
         }
 
 
+
+
+
+
+
+
+
+
+        /// <summary>
+        /// Create routine for an ABB robot with stationary drill and mobile workpiece.
+        /// </summary>
+        /// <param name="directory">Directory to write files ("C:\")</param>
+        /// <param name="planes">A list of all your favorite nodes \m| </param>
+        /// <returns>filePaths</returns>
+        public static List<string> createDrillRoutine5(string directory, List<Plane> planes)
+        {
+            // create list of filenames
+            List<string> outputFiles = new List<string>();
+
+            // name files
+            string filename = string.Format("{0}\\test.prg", directory);
+            outputFiles.Add(filename);
+
+            // setup  sub
+            int index = 0;
+            var targBuilder = new StringBuilder();
+            var moveBuilder = new StringBuilder();
+
+            // sort planes
+            List<Plane> newPlanes = sortPolar3_Plane(planes, 0);
+
+            // setup target
+            foreach (Plane plane in newPlanes)
+            {
+                // perform correction
+                Plane flippedPlane = flip_Plane2(plane, true);
+                Plane hole = Plane.ByOriginNormalXAxis(flippedPlane.Origin, flippedPlane.Normal, flippedPlane.YAxis);
+
+                // create targets
+                targBuilder.Append(string.Format("\n"));
+                targBuilder.Append(string.Format("\n\t! {0};", index));
+                targBuilder.Append(string.Format("\n\tVAR robtarget S{0}0 := {1};", index, rtarget((Plane)(hole.Translate(hole.Normal, -100)))));
+                targBuilder.Append(string.Format("\n\tVAR robtarget S{0}1 := {1};", index, rtarget((Plane)(hole.Translate(hole.Normal, -50)))));
+                targBuilder.Append(string.Format("\n\tVAR robtarget S{0}2 := {1};", index, rtarget((Plane)(hole.Translate(hole.Normal, -10)))));
+
+                // create movement instructions
+                moveBuilder.Append(string.Format("\n"));
+                moveBuilder.Append(string.Format("\n\t\tTPWrite(\"Drilling... {0}, {1} of {2}.\");", index, index + 1, index));
+                moveBuilder.Append(string.Format("\n\t\tMoveL S{0}0, {1}, {2}, drill\\WObj:=block;", index, "v200", "z30"));
+                moveBuilder.Append(string.Format("\n\t\tMoveL S{0}1, {1}, {2}, drill\\WObj:=block;", index, "v100", "z5"));
+                moveBuilder.Append(string.Format("\n\t\tMoveL S{0}2, {1}, {2}, drill\\WObj:=block;", index, "rate", "fine"));
+                moveBuilder.Append(string.Format("\n\t\tMoveL S{0}1, {1}, {2}, drill\\WObj:=block;", index, "rate", "fine"));
+                moveBuilder.Append(string.Format("\n\t\tMoveL S{0}0, {1}, {2}, drill\\WObj:=block;", index, "v100", "z5"));
+                //moveBuilder.Append(string.Format("\n\t\tMoveL RelTool(S{0}0, 0, 50, 0), {1}, {2}, drill\\WObj:=block;", index, "v200", "z30"));
+
+                // create safe movement to next
+                if (index < planes.Count - 1)
+                {
+                    //moveBuilder.Append(string.Format("\n\t\tMoveAbsJ CalcJointT(RelTool(S{0}0, 0, 50, 0), drill\\WObj:=block), {1}, {2}, drill\\WObj:=block;", index + 1, "v200", "z5"));
+                    moveBuilder.Append(string.Format("\n\t\tMoveAbsJ CalcJointT(S{0}0, drill\\WObj:=block), {1}, {2}, drill\\WObj:=block;", index + 1, "v200", "z5"));
+                }
+
+                // update index
+                index += 1;
+            }
+
+            //targBuilder.Append(string.Format("\n"));
+            //targBuilder.Append(string.Format("\n\tVAR jointtarget j0 := {0};", jtarget(-135, 0, 0, 90, 90, 0)));
+            //targBuilder.Append(string.Format("\n\tVAR jointtarget j1 := {0};", jtarget(-45, 0, 0, 0, 90, 0)));
+
+            // create rapid
+            string r = "";
+            using (var tw = new StreamWriter(filename, false))
+            {
+                r =
+                    "MODULE MainModule" +
+                    "\n" +
+                    "\n" + targBuilder.ToString() +
+                    "\n" +
+                    "\n\t" + "! ROUTINE" +
+                    "\n\t" + "PROC main()" +
+                    "\n\t\t" + "ConfL\\Off;" +
+                    "\n\t\t" + "SingArea\\Wrist;" +
+                    "\n" +
+                    "\n\t\t" + "TPErase;" +
+                    "\n" +
+                    "\n\t\t" + "TPWrite(\"Check block && drill!\");" +
+                    "\n\t\t" + "MoveAbsJ j0, v200, z5, tool0;" +
+                    "\n\t\t" + "MoveAbsJ j1, v200, z5, tool0;" + moveBuilder.ToString() +
+                    "\n" +
+                    "\n\t\t" + "TPWrite(\"Returning to start...\");" +
+                    "\n\t\t" + "MoveAbsJ j1, v200, z5, tool0;" +
+                    "\n\t\t" + "MoveAbsJ j0, v200, z5, tool0;" +
+                    "\n" +
+                    "\n\t\t" + "TPWrite(\"Node complete!\");" +
+                    "\n" +
+                    "\n\t\t" + "Stop;" +
+                    "\n\t" + "ENDPROC" +
+                    "\n" +
+                    "\n" + "ENDMODULE"
+                    ;
+
+                tw.Write(r);
+                tw.Flush();
+            }
+
+            // end step
+            return outputFiles;
+        }
 
 
 
