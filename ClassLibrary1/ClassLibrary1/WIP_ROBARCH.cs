@@ -1873,9 +1873,15 @@ namespace Dynamo_TORO
                 var targBuilder = new StringBuilder();
                 var moveBuilder = new StringBuilder();
 
+
+
+
+
+
                 // sort planes
-                //List<Plane> strutPlanes = node.Struts.Select(s => s.AlignedCutPlaneAtOrigin(Vector.ByCoordinates(0, 1, 0))).ToList();
-                List<Plane> strutPlanes = node.Struts.Select(s => s.CutPlaneAtOrigin).ToList();
+                List<Plane> strutPlanes = node.Struts.Select(s => s.AlignedCutPlaneAtOrigin(Vector.ByCoordinates(0, 1, 0))).ToList();
+                //List<Plane> strutPlanes = node.Struts.Select(s => s.CutPlaneAtOrigin).ToList();
+
                 List<Plane> sortedPlanes = sortPolar3_Plane(strutPlanes, 0);
                 List<int> sortedIndices = sortPolar3_Index(strutPlanes, 0);
 
@@ -1888,10 +1894,38 @@ namespace Dynamo_TORO
                     // perform correction
                     Plane flippedPlane = flip_Plane2(plane, true);
                     Plane hole = Plane.ByOriginNormalXAxis(flippedPlane.Origin, flippedPlane.Normal, flippedPlane.YAxis);
-                    if (Math.Abs(hole.Normal.Y) < hole.Normal.X)
+
+                    if (Math.Abs(hole.Normal.X) <= Math.Abs(hole.Normal.Y) && hole.Normal.Y >= 0)
                     {
                         hole = (Plane) hole.Rotate(hole, -90);
                     }
+                    if (Math.Abs(hole.Normal.X) < Math.Abs(hole.Normal.Y) && hole.Normal.Y < 0)
+                    {
+                        hole = (Plane) hole.Rotate(hole, 90);
+                    }
+
+                    /*
+                    if (hole.Normal.IsAlmostEqualTo(Vector.XAxis().Reverse()))
+                    {
+                        hole = (Plane) hole.Rotate(hole.Origin, hole.Normal, 180);
+                    }
+                    */
+
+                    //if ((Math.Abs(Math.Acos(Vector.ByCoordinates(-1, 0, 0).Dot(hole.Normal))) < Math.PI / 4) && (hole.Normal.X < 0))
+                    if ((Math.Acos(Math.Abs(Vector.ByCoordinates(-1, 0, 0).Dot(hole.Normal))) < 45) || (Math.Acos(Math.Abs(Vector.ByCoordinates(0, -1, 0).Dot(hole.Normal))) <= 45))
+                    {
+                        hole = (Plane)hole.Rotate(hole.Origin, hole.Normal, 180);
+                    }
+
+                    /*
+                    if ((Math.Acos(Math.Abs(Vector.ByCoordinates(0, -1, 0).Dot(hole.Normal))) <= 45))
+                    {
+                        hole = (Plane)hole.Rotate(hole.Origin, hole.Normal, 180);
+                    }
+                    */
+
+
+
 
                     // setup target
                     //Plane hole = strut.AlignedCutPlaneAtOrigin(Vector.ByCoordinates(0, 1, 0));
@@ -1920,6 +1954,11 @@ namespace Dynamo_TORO
                         moveBuilder.Append(string.Format("\n\t\tMoveAbsJ CalcJointT(S{0}0, drill\\WObj:=block), {1}, {2}, drill\\WObj:=block;", index + 1, "v200", "z5"));
                     }
                 }
+
+
+
+
+
 
                 /*
                 foreach (Strut strut in node.Struts)
