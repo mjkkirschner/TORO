@@ -4,8 +4,18 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Autodesk.DesignScript.Interfaces;
+using WireFrameToRobot.Extensions;
+
 namespace WireFrameToRobot
 {
+
+    public enum Material
+    {
+        Wood1,Wood2,Wood3,Wood4,Wood5,
+    }
+
+    
+
     public class Strut:ILabelAble,IDisposable,IGraphicItem
     {
         /// <summary>
@@ -33,7 +43,12 @@ namespace WireFrameToRobot
         /// a solid circular sweep along the line
         /// </summary>
         public Solid StrutGeometry { get; private set; }
-       
+
+        /// <summary>
+        /// the material this strut is made of
+        /// </summary>
+        public Material Material { get; set; }
+
         /// <summary>
         /// get labels for the strut - showing its ID as geometry
         /// </summary>
@@ -232,7 +247,15 @@ namespace WireFrameToRobot
         [IsVisibleInDynamoLibrary(false)]
         public void Tessellate(IRenderPackage package, TessellationParameters parameters)
         {
+            package.RequiresPerVertexColoration = true;
             StrutGeometry.Tessellate(package, parameters);
+            var color = this.Material.MaterialToColor();
+            var colors = new List<byte>();
+            foreach (var vert in Enumerable.Range(0,package.MeshVertexCount))
+            {
+                colors.AddRange(color);
+            }
+            package.ApplyMeshVertexColors(colors.ToArray());
         }
         /// <summary>
         /// calculate the wasted strut length by finding the first remaining material we can use
@@ -365,5 +388,25 @@ namespace WireFrameToRobot.Extensions
             return p;
         }
 
+        public static byte[] MaterialToColor(this Material m)
+        {
+            // Switch on the material enum.
+            switch (m)
+            {
+                case Material.Wood1:
+                    return new byte[] { 0, 0, 255, 255 };
+                case Material.Wood2:
+                    return new byte[] { 255, 0, 0, 255 };
+                case Material.Wood3:
+                    return new byte[] { 0, 255, 0, 255 };
+                case Material.Wood4:
+                    return new byte[] { 255, 255, 0, 255 };
+                case Material.Wood5:
+                    return new byte[] { 0, 255, 255, 255 };
+                default:
+                    return new byte[] { 200, 200, 200, 255 };
+
+            }
+        }
     }
 }
