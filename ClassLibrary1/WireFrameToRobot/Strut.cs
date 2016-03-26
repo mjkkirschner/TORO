@@ -195,14 +195,14 @@ namespace WireFrameToRobot
                 var strut = struts[index];
                 var mat = materials[index];
                 //clone the strut, including geometry,
-                //the only thing not cloned is a reference to the node
+                //the only thing not cloned is a reference to the node and the original line
+                //that created the original struts
                 var clone = strut.Clone() as Strut;
                 clone.Material = mat;
 
                 newStruts.Add(clone);
             }
             return newStruts;
-
         }
         internal void computeStrutGeometry()
         {

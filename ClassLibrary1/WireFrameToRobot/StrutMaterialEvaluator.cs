@@ -35,7 +35,8 @@ namespace WireFrameToRobot
             // or we can add these to the strut class - and they will be updated when react values are recalculated.
             
             //we just need to add more equations to this list of functions and we'll filter them, we can also perform a similar
-            //calculation in Dynamo directly
+            //calculation in Dynamo directly, or these can be exposed as regular methods and Dynamo will convert them to
+            //functions automatically if they left unhooked
             var equation1 = new Func<Strut, bool>(
                 (Strut strut) => 
                 {
