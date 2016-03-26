@@ -365,7 +365,6 @@ namespace WireFrameToRobot
             return ByPointsLinesAndGeoOrientationStrategy(nodeCenters, struts, 6, Cuboid.ByLengths(38,38,38), OrientationStrategy.OrientationProvided);
         }
 
-
         public List<Curve> GetLabels(double scale =30)
         {
            var label = new Label<Node>(this, scale);

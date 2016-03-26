@@ -16,7 +16,7 @@ namespace WireFrameToRobot
 
     
 
-    public class Strut:ILabelAble,IDisposable,IGraphicItem
+    public class Strut:ILabelAble,IDisposable,IGraphicItem,ICloneable
     {
         /// <summary>
         /// an ID generated based on the nodes this strut is connected to
@@ -40,14 +40,18 @@ namespace WireFrameToRobot
         /// </summary>
         public double Diameter { get; private set; }
         /// <summary>
-        /// a solid circular sweep along the line
+        /// a solid sweep of the profile along the line
         /// </summary>
         public Solid StrutGeometry { get; private set; }
+        /// <summary>
+        /// a 
+        /// </summary>
+        public Curve Profile { get; private set; }
 
         /// <summary>
         /// the material this strut is made of
         /// </summary>
-        public Material Material { get; set; }
+        public Material Material { get; private set; }
 
         /// <summary>
         /// get labels for the strut - showing its ID as geometry
@@ -167,15 +171,53 @@ namespace WireFrameToRobot
             Diameter = diameter; //mm
             
         }
+        /// <summary>
+        /// this constructor creates a list of new struts from an existing list of struts but modifies the 
+        /// materials of the new struts using a list of materials - the indicies of the struts and materials
+        /// are matched, so they must be the same length
+        /// </summary>
+        /// <param name="struts"></param>
+        /// <param name="materials"></param>
+        /// <returns></returns>
+        public static List<Strut> ByStrutsAndMaterials (List<Strut> struts, List<Material> materials)
+        {
+            if (struts.Count != materials.Count)
+            {
+                throw new ArgumentOutOfRangeException("the strut list and material list do not have the same length");
+            }
+            //TODO a decision needs to be made -are we generating new struts or are we simply modifying the material properties
+            //for now we CLONE them
 
+            var newStruts = new List<Strut>();
+
+            foreach (var index in Enumerable.Range(0, struts.Count))
+            {
+                var strut = struts[index];
+                var mat = materials[index];
+                //clone the strut, including geometry,
+                //the only thing not cloned is a reference to the node
+                var clone = strut.Clone() as Strut;
+                clone.Material = mat;
+
+                newStruts.Add(clone);
+            }
+            return newStruts;
+
+        }
         internal void computeStrutGeometry()
         {
             //construct a swept tube along the strut line
             var startPlane = TrimmedLineRepresentation.PlaneAtParameter(0);
-            var circle = Circle.ByPlaneRadius(startPlane, Diameter / 2);
-            var swept = circle.SweepAsSolid(TrimmedLineRepresentation);
-            circle.Dispose();
+            var ccs = this.Profile.ContextCoordinateSystem;
+            var finalcs = CoordinateSystem.ByPlane(startPlane);
+
+            var prof = this.Profile.Transform(ccs,finalcs) as Curve;
+            var swept = prof.SweepAsSolid(TrimmedLineRepresentation);
+
+            prof.Dispose();
             startPlane.Dispose();
+            ccs.Dispose();
+            finalcs.Dispose();
             StrutGeometry = swept;
         }
 
@@ -226,6 +268,14 @@ namespace WireFrameToRobot
                 LineRepresentation.Dispose();
             }
             StrutGeometry.Dispose();
+            if (TrimmedLineRepresentation != null){
+                TrimmedLineRepresentation.Dispose();
+            }
+            if(Profile != null)
+            {
+                Profile.Dispose();
+            }
+
         }
 
         [IsVisibleInDynamoLibrary(false)]
@@ -304,6 +354,16 @@ namespace WireFrameToRobot
             }
             //foreach length which is not equal to its original length  - sum them, and return this sum as waste
             return lengths.Where(x => Math.Abs(x - lengthOfStruts) > 0.000001).Sum();
+        }
+
+        public object Clone()
+        {
+            var NewStrut = new Strut(this.LineRepresentation, this.Diameter, this.OwnerNode);
+            NewStrut.SetId(this.ID);
+            NewStrut.Profile = this.Profile.Translate(0,0,0) as Curve;
+            NewStrut.StrutGeometry = this.StrutGeometry.Translate(0, 0, 0) as Solid;
+            NewStrut.TrimmedLineRepresentation = this.TrimmedLineRepresentation.Translate(0,0,0) as Line;
+            return NewStrut;
         }
     }
 
