@@ -4,69 +4,145 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Autodesk.DesignScript.Runtime;
-
+using System.Reflection;
 
 namespace WireFrameToRobot.StrutUtilities
 {
+
+    /// <summary>
+    /// this class holds a bunch of static methods that we can use inside Dynamo as evaluator functions
+    /// OR they can be converted to delegates on the c# side and used below in a c# evaluator
+    /// </summary>
+    public static class EvalautionMethods
+    {
+        static bool equation1(Strut strut)
+
+        {
+            var pass = (strut.Diameter * (Math.Sqrt(strut.LineRepresentation.Length)) * (int)strut.Material) > 100;
+            return pass;
+        }
+    }
     /// <summary>
     /// this class holds methods for evaluating struts based on their material assignement
     /// </summary>
+    /// 
     public static class StrutMaterialEvaluator
     {
+
         /// <summary>
-        /// this method evaluates a set of struts and returns lists 
-        /// containing the struts that passed and those that failed the evaluation
+        /// this method converts the evaluatorMethods to delegates that we can call
+        /// </summary>
+        internal static List<Func<Strut, bool>> EvaluatonDelegates
+        {
+            get
+            {
+                return typeof(EvalautionMethods).GetMethods(BindingFlags.Static).Select
+                          (x => Delegate.CreateDelegate(typeof(Func<Strut, bool>), x)).Cast<Func<Strut, bool>>().ToList();
+            }
+        }
+
+
+
+        /// <summary>
+        /// method evaluates a sets of struts and returns a partitioned list of struts that passed all the tests
+        /// and those that did not
         /// </summary>
         /// <param name="strutSolution"></param>
+        /// <param name="functionsToTest"></param>
         /// <returns></returns>
-        [MultiReturn(new string[]{"passed", "failed"})]
-        public static Dictionary<string,object> EvaluateStruts(List<Strut> strutSolution)
+        [MultiReturn(new string[] { "passed", "failed" })]
+        public static Dictionary<string, object> EvaluateStruts(List<Strut> strutSolution, List<Func<Strut, bool>> functionsToTest)
         {
 
             var outputDict = new Dictionary<string, object>();
-           
 
-            //TODO this method should probably accept a set of functions or expose some variables that define
-            // the requirments for passing and failure.
-
-            // for now we just check something simple - CrossSection * sqrt(length) * materialIndex > some static load number
-            // if this equation is true then the strut passes else fails, we can consider the fittness of the solution to be
-            // passing.num/total.num this is just a placeholder and will probably need to accept a reactObject with some forces
-            // or we can add these to the strut class - and they will be updated when react values are recalculated.
-            
-            //we just need to add more equations to this list of functions and we'll filter them, we can also perform a similar
-            //calculation in Dynamo directly, or these can be exposed as regular methods and Dynamo will convert them to
-            //functions automatically if they left unhooked
-            var equation1 = new Func<Strut, bool>(
-                (Strut strut) => 
-                {
-                    var pass = (strut.Diameter * (Math.Sqrt(strut.LineRepresentation.Length)) * (int)strut.Material ) > 100  ;
-                  
-                    return pass;
-                }
-                    );
-            var tests = new List<Func<Strut,bool>>();
-            tests.Add(equation1);
-
-            var passed = strutSolution.Where(strut => tests.All(test => test.Invoke(strut) == true)).ToList();
-            var failed = strutSolution.Where(strut => tests.Any(test => test.Invoke(strut) == false)).ToList();
+            var passed = strutSolution.Where(strut => functionsToTest.All(test => test.Invoke(strut) == true)).ToList();
+            var failed = strutSolution.Where(strut => functionsToTest.Any(test => test.Invoke(strut) == false)).ToList();
 
             outputDict.Add("passed", passed);
             outputDict.Add("failed", failed);
 
             return outputDict;
         }
-        
 
-        public static List<Strut> GenerateInitialSolutionByStrutsMaterial(List<Strut> struts, Material material)
+
+        /// <summary>
+        /// create a first solution from a material and struts, all struts are set to this material
+        /// and then the solution is evaluated
+        /// </summary>
+        /// <param name="struts"></param>
+        /// <param name="material"></param>
+        /// <returns></returns>
+        public static StrutSolution GenerateInitialSolutionByStrutsMaterial(List<Strut> struts, Material material)
         {
+            //set initial materials
             var newStruts = Strut.ByStrutsAndMaterials(struts, Enumerable.Repeat(material, struts.Count).ToList());
-            return newStruts;
+
+            //evaluate this solution
+            var resultDict = EvaluateStruts(newStruts, EvaluatonDelegates);
+            var passing = resultDict["passed"] as List<Strut>;
+            var failing = resultDict["failed"] as List<Strut>;
+
+            var initialSolution = new StrutSolution(newStruts,passing,failing,passing.Count()/newStruts.Count);
+            return initialSolution;
         }
 
-        public static GenerateNewSolution(List<Strut>,List<Func,bool>>)
+        /// <summary>
+        /// this function iterates on a previous solution to produce a new solution
+        /// </summary>
+        /// <param name="oldSolution"></param>
+        /// <returns></returns>
+        public static StrutSolution GenerateNewSolution(StrutSolution oldSolution)
+        {
+            //for now all we are going to do is take the last failing strut and 
+            //and increment its material
+            var strutToModify = oldSolution.Failing.Last();
+            //increment the material
+            var newMat = (Material)((int)strutToModify.Material + 1);
+
+            var materials = oldSolution.Struts.Select(x =>
+            {
+                if (x.ID == strutToModify.ID)
+                {
+                    return newMat;
+                }
+                return x.Material;
+
+            }).ToList();
+
+            var clonedStruts = Strut.ByStrutsAndMaterials(oldSolution.Struts, materials);
+
+            var resultDict = EvaluateStruts(clonedStruts, EvaluatonDelegates);
+            var passing = resultDict["passed"] as List<Strut>;
+            var failing = resultDict["failed"] as List<Strut>;
+
+            var newSolution = new StrutSolution(clonedStruts, passing, failing, passing.Count() / clonedStruts.Count);
+            return newSolution;
+        }
 
     }
+
+    /// <summary>
+    /// this class represents a specific configuration of struts
+    /// </summary>
+    public class StrutSolution
+    {
+        public List<Strut> Struts { get; private set; }
+        public List<Strut> Passing { get; private set; }
+        public List<Strut> Failing { get; private set; }
+        public double Fitness { get; private set; }
+
+        internal StrutSolution(List<Strut> allStruts, List<Strut> passingStruts, List<Strut> failingStruts, double fitness)
+        {
+            Struts = allStruts;
+            Passing = passingStruts;
+            Failing = failingStruts;
+            Fitness = fitness;
+        }
+
+
+    }
+
     /// <summary>
     /// this class can be used to reoresent the result of a test on a strut, 
     /// </summary>
