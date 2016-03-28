@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Autodesk.DesignScript.Runtime;
 
 
-namespace WireFrameToRobot
+namespace WireFrameToRobot.StrutUtilities
 {
     /// <summary>
     /// this class holds methods for evaluating struts based on their material assignement
@@ -57,5 +57,25 @@ namespace WireFrameToRobot
             return outputDict;
         }
         
+
+        public static List<Strut> GenerateInitialSolutionByStrutsMaterial(List<Strut> struts, Material material)
+        {
+            var newStruts = Strut.ByStrutsAndMaterials(struts, Enumerable.Repeat(material, struts.Count).ToList());
+            return newStruts;
+        }
+
+        public static GenerateNewSolution(List<Strut>,List<Func,bool>>)
+
+    }
+    /// <summary>
+    /// this class can be used to reoresent the result of a test on a strut, 
+    /// </summary>
+    public class StrutTestResult
+    {
+        public Strut Strut { get; private set; }
+        public bool Passing { get; private set; }
+        public double value { get; private set; }
+        public Delegate Function { get; private set; }
+
     }
 }
