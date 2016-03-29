@@ -36,10 +36,6 @@ namespace WireFrameToRobot
         /// </summary>
         public Node OwnerNode { get; private set; }
         /// <summary>
-        /// the diameter of the strut geometry
-        /// </summary>
-        public double Diameter { get; private set; }
-        /// <summary>
         /// a solid sweep of the profile along the line
         /// </summary>
         public Solid StrutGeometry { get; private set; }
@@ -162,14 +158,13 @@ namespace WireFrameToRobot
         /// construct a new strut object, this method computes the strut geometry and caches it on the strut
         /// </summary>
         /// <param name="line"></param>
-        /// <param name="diameter"></param>
+        /// <param name="profile"> this must be a closed curve</param>
         /// <param name="owner"></param>
-        internal Strut(Line line, double diameter, Node owner)
+        internal Strut(Line line, Curve profile, Node owner)
         {
-            LineRepresentation = line;
+            LineRepresentation = line.Translate(0,0,0) as Line;
             OwnerNode = owner;
-            Diameter = diameter; //mm
-            
+            Profile = profile.Translate(0,0,0) as Curve;
         }
         /// <summary>
         /// this constructor creates a list of new struts from an existing list of struts but modifies the 
@@ -263,7 +258,7 @@ namespace WireFrameToRobot
 
         public void Dispose()
         {
-           if(LineRepresentation.Tags.LookupTag("dispose") != null)
+           if(LineRepresentation != null)
             {
                 LineRepresentation.Dispose();
             }
@@ -358,9 +353,8 @@ namespace WireFrameToRobot
 
         public object Clone()
         {
-            var NewStrut = new Strut(this.LineRepresentation, this.Diameter, this.OwnerNode);
+            var NewStrut = new Strut(this.LineRepresentation,this.Profile, this.OwnerNode);
             NewStrut.SetId(this.ID);
-            NewStrut.Profile = this.Profile.Translate(0,0,0) as Curve;
             NewStrut.StrutGeometry = this.StrutGeometry.Translate(0, 0, 0) as Solid;
             NewStrut.TrimmedLineRepresentation = this.TrimmedLineRepresentation.Translate(0,0,0) as Line;
             return NewStrut;

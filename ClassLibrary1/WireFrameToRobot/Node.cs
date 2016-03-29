@@ -300,12 +300,16 @@ namespace WireFrameToRobot
         /// <param name="baseNode"></param>
         /// <param name="nodeOrientationStrategy"></param>
         /// <returns></returns>
-        public static List<Node> ByPointsLinesAndGeoOrientationStrategy(List<Point> nodeCenters, List<Line> struts, double strutDiameter, Solid baseNode, OrientationStrategy nodeOrientationStrategy, double drillDepth = 12.7)
+        public static List<Node> ByPointsLinesAndGeoOrientationStrategy(List<Point> nodeCenters, List<Line> struts, Curve strutProfile, Solid baseNode, OrientationStrategy nodeOrientationStrategy, double drillDepth = 12.7)
         {
             int currentId = 1;
             //prune all duplicate inputs from wireframe
             var prunedPoints = Point.PruneDuplicates(nodeCenters);
             var prunedLines = GeometryExtensions.PruneDuplicates(struts);
+
+            //copy all the prunedLines so we dont accidently dispose any input lines
+            prunedLines = prunedLines.Select(x => x.Translate(0, 0, 0) as Line).ToList();
+
             var types = new Dictionary<int, Plane>();
 
             //find the adjacentLines for each node
@@ -315,7 +319,7 @@ namespace WireFrameToRobot
                 //find adjacent struts for this node
                 var intersectingLines = findAdjacentLines(centerPoint, prunedLines);
                 
-                var currentNode = new Node("N"+currentId.ToString().PadLeft(4,'0'), centerPoint, baseNode, intersectingLines, strutDiameter, drillDepth, nodeOrientationStrategy,types);
+                var currentNode = new Node("N"+currentId.ToString().PadLeft(4,'0'), centerPoint, baseNode, intersectingLines, strutProfile, drillDepth, nodeOrientationStrategy,types);
                
                 //get the most z face and store it as the holder face
                 var surfaces = baseNode.Explode().OfType<Surface>().OrderBy(x => x.PointAtParameter(.5, .5).Z).ToList();
@@ -355,14 +359,14 @@ namespace WireFrameToRobot
                     strut.computeStrutGeometry();
                 }
             }
-           
+            prunedLines.ToList().ForEach(x => x.Dispose());
             return output;
         }
 
         public static List<Node> ByPointsLinesGeometries(List<Point> nodeCenters, List<Line> struts, List<Solid> Nodes)
         {
             throw new NotImplementedException();
-            return ByPointsLinesAndGeoOrientationStrategy(nodeCenters, struts, 6, Cuboid.ByLengths(38,38,38), OrientationStrategy.OrientationProvided);
+            return ByPointsLinesAndGeoOrientationStrategy(nodeCenters, struts, Circle.ByCenterPointRadius(Point.Origin(),6) as Curve, Cuboid.ByLengths(38,38,38), OrientationStrategy.OrientationProvided);
         }
 
         public List<Curve> GetLabels(double scale =30)
@@ -394,7 +398,7 @@ namespace WireFrameToRobot
             return intersectingLines;
         }
 
-        private Node(string id, Point center, Solid nodeBaseGeo, List<Line> lines, double strutDiameter,double drillDepth, OrientationStrategy strategy, Dictionary<int,Plane> foundNodeTypes)
+        private Node(string id, Point center, Solid nodeBaseGeo, List<Line> lines, Curve strutProfile, double drillDepth, OrientationStrategy strategy, Dictionary<int,Plane> foundNodeTypes)
         {
             ID = id;
             originalGeometry = nodeBaseGeo;
@@ -404,7 +408,7 @@ namespace WireFrameToRobot
             //orient the struts so they all point away from the node
             var newlines = lines.Select(x => pointAway(center, x)).ToList();
             //construct stuts from these new lines
-            this.Struts = newlines.Select(x => new Strut(x, strutDiameter, this)).ToList();
+            this.Struts = newlines.Select(x => new Strut(x, strutProfile, this)).ToList();
             //calculate the orientation of the node based on the orientation strategy
             this.OrientedNodeGeometry = orientNode(strategy, this.Struts,ref foundNodeTypes);           
 
@@ -663,8 +667,7 @@ namespace WireFrameToRobot
             if (line.EndPoint.IsAlmostEqualTo(point))
             {
                 var output = line.Reverse() as Line;
-                output.Tags.AddTag("dispose", true);
-                return output ;
+                return output;
             }
             return line;
         }
@@ -672,7 +675,7 @@ namespace WireFrameToRobot
         public static List<Strut> FindUniqueStruts (List<Node>nodes)
         {
            var edges = UniqueStruts(nodes);
-            return edges.Select(x => x.GeometryEdges.First()).ToList();
+            return edges.Select(x => x.GeometryEdges.First().Clone() as Strut).ToList();
         }
 
         public static double TotalStrutLength(List<Node> nodes)
