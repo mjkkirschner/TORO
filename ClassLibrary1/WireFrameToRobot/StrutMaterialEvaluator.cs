@@ -18,7 +18,9 @@ namespace WireFrameToRobot.StrutUtilities
         static bool equation1(Strut strut)
 
         {
-            var pass = (strut.Diameter * (Math.Sqrt(strut.LineRepresentation.Length)) * (int)strut.Material) > 100;
+            var surf = Autodesk.DesignScript.Geometry.Surface.ByPatch(strut.Profile);
+            var pass = (surf.Area/ (Math.Sqrt(strut.LineRepresentation.Length)) * ((int)strut.Material)+1) > 100;
+            surf.Dispose();
             return pass;
         }
     }
@@ -32,11 +34,11 @@ namespace WireFrameToRobot.StrutUtilities
         /// <summary>
         /// this method converts the evaluatorMethods to delegates that we can call
         /// </summary>
-        internal static List<Func<Strut, bool>> EvaluatonDelegates
+        public static List<Func<Strut, bool>> EvaluatonDelegates
         {
             get
             {
-                return typeof(EvalautionMethods).GetMethods(BindingFlags.Static).Select
+                return typeof(EvalautionMethods).GetMethods(BindingFlags.Static|BindingFlags.NonPublic|BindingFlags.FlattenHierarchy).Select
                           (x => Delegate.CreateDelegate(typeof(Func<Strut, bool>), x)).Cast<Func<Strut, bool>>().ToList();
             }
         }
