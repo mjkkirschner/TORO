@@ -5,32 +5,10 @@ using System.Collections.Generic;
 using System.Linq;
 using Autodesk.DesignScript.Interfaces;
 using WireFrameToRobot.Extensions;
-using Color = DSCore.Color;
 namespace WireFrameToRobot
 {
 
-    public class Material
-    {
-        public double ModulusElasticity { get; private set; }
-        public string Name { get; private set; }
-        public Color Color { get; private set; }
-
-        public static Material ByModulusName(string name, double modulus, Color color)
-        {
-            var mat = new Material(name,modulus,color);
-            return mat;
-        }
-
-        public Material(string name, double modulus, Color color)
-        {
-            this.ModulusElasticity = modulus;
-            this.Name = name;
-            this.Color = color;
-        }
-    }
-
-    
-
+   
     public class Strut:ILabelAble,IDisposable,IGraphicItem,ICloneable
     {
         /// <summary>

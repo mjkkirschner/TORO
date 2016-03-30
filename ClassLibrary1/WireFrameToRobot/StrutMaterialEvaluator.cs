@@ -19,7 +19,7 @@ namespace WireFrameToRobot.StrutUtilities
 
         {
             var surf = Autodesk.DesignScript.Geometry.Surface.ByPatch(strut.Profile);
-            var pass = surf.Area / (Math.Sqrt(strut.LineRepresentation.Length)) < strut.Material.ModulusElasticity;
+            var pass = surf.Area / (Math.Sqrt(strut.LineRepresentation.Length)) < strut.Material.ModulusElasticityX;
             surf.Dispose();
             return pass;
         }
@@ -108,8 +108,8 @@ namespace WireFrameToRobot.StrutUtilities
             //and increment its material
             var strutToModify = oldSolution.Failing.Last();
             //increment the material by finding the material with great E than the current one
-            var newMat = oldSolution.PossibleMaterials.OrderBy(x => x.ModulusElasticity).
-                Where(mat => mat.ModulusElasticity > strutToModify.Material.ModulusElasticity).First();
+            var newMat = oldSolution.PossibleMaterials.OrderBy(x => x.ModulusElasticityX).
+                Where(mat => mat.ModulusElasticityX > strutToModify.Material.ModulusElasticityX).First();
 
             var materials = oldSolution.Struts.Select(x =>
             {
