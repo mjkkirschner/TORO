@@ -19,7 +19,7 @@ namespace WireFrameToRobot.StrutUtilities
 
         {
             var surf = Autodesk.DesignScript.Geometry.Surface.ByPatch(strut.Profile);
-            var pass = (surf.Area/ (Math.Sqrt(strut.LineRepresentation.Length)) * ((int)strut.Material)+1) > 100;
+            var pass = surf.Area / (Math.Sqrt(strut.LineRepresentation.Length)) < strut.Material.ModulusElasticity;
             surf.Dispose();
             return pass;
         }
@@ -75,17 +75,21 @@ namespace WireFrameToRobot.StrutUtilities
         /// <param name="struts"></param>
         /// <param name="material"></param>
         /// <returns></returns>
-        public static StrutSolution GenerateInitialSolutionByStrutsMaterial(List<Strut> struts, Material material)
-        {
+        public static StrutSolution GenerateInitialSolutionByStrutsMaterial(List<Strut> struts, Material initialMaterial, List<Material> possibleMaterials)
+        {//TODO we'll probably add an input here for some initial forces for each strut, OR the struts will just carry this info
+            //around and so properties will be added, probably a dictionary of forces- or both, but letting us set them
+            //explictly here may be good, or they can be set on the initial struts using some update method node...
+
+
             //set initial materials
-            var newStruts = Strut.ByStrutsAndMaterials(struts, Enumerable.Repeat(material, struts.Count).ToList());
+            var newStruts = Strut.ByStrutsAndMaterials(struts, Enumerable.Repeat(initialMaterial, struts.Count).ToList());
 
             //evaluate this solution
             var resultDict = EvaluateStruts(newStruts, EvaluatonDelegates);
             var passing = resultDict["passed"] as List<Strut>;
             var failing = resultDict["failed"] as List<Strut>;
 
-            var initialSolution = new StrutSolution(newStruts,passing,failing,passing.Count()/newStruts.Count);
+            var initialSolution = new StrutSolution(newStruts,passing,failing,passing.Count/newStruts.Count,possibleMaterials);
             return initialSolution;
         }
 
@@ -95,12 +99,17 @@ namespace WireFrameToRobot.StrutUtilities
         /// <param name="oldSolution"></param>
         /// <returns></returns>
         public static StrutSolution GenerateNewSolution(StrutSolution oldSolution)
-        {
+        {//TODO IMPLEMENT THIS AS A DESIGN SCRIPT CODEBLOCK WITH SIGNATURE
+         //(strutSolution solution,
+         //Func<strut,StrutSolution> newSolutionStrategy, 
+            // List<Func<strut,bool>> evaluatorFunctions)
+
             //for now all we are going to do is take the last failing strut and 
             //and increment its material
             var strutToModify = oldSolution.Failing.Last();
-            //increment the material
-            var newMat = (Material)((int)strutToModify.Material + 1);
+            //increment the material by finding the material with great E than the current one
+            var newMat = oldSolution.PossibleMaterials.OrderBy(x => x.ModulusElasticity).
+                Where(mat => mat.ModulusElasticity > strutToModify.Material.ModulusElasticity).First();
 
             var materials = oldSolution.Struts.Select(x =>
             {
@@ -118,14 +127,14 @@ namespace WireFrameToRobot.StrutUtilities
             var passing = resultDict["passed"] as List<Strut>;
             var failing = resultDict["failed"] as List<Strut>;
 
-            var newSolution = new StrutSolution(clonedStruts, passing, failing, passing.Count() / clonedStruts.Count);
+            var newSolution = new StrutSolution(clonedStruts, passing, failing, passing.Count / clonedStruts.Count, oldSolution.PossibleMaterials);
             return newSolution;
         }
 
     }
 
     /// <summary>
-    /// this class represents a specific configuration of struts
+    /// this class represents a specific configuration of struts and the evaluation of this configuration
     /// </summary>
     public class StrutSolution
     {
@@ -133,27 +142,17 @@ namespace WireFrameToRobot.StrutUtilities
         public List<Strut> Passing { get; private set; }
         public List<Strut> Failing { get; private set; }
         public double Fitness { get; private set; }
+        public List<Material> PossibleMaterials { get; private set; }
 
-        internal StrutSolution(List<Strut> allStruts, List<Strut> passingStruts, List<Strut> failingStruts, double fitness)
+        internal StrutSolution(List<Strut> allStruts, List<Strut> passingStruts, List<Strut> failingStruts, double fitness, List<Material> materials)
         {
             Struts = allStruts;
             Passing = passingStruts;
             Failing = failingStruts;
             Fitness = fitness;
+            PossibleMaterials = materials;
         }
 
-
-    }
-
-    /// <summary>
-    /// this class can be used to reoresent the result of a test on a strut, 
-    /// </summary>
-    public class StrutTestResult
-    {
-        public Strut Strut { get; private set; }
-        public bool Passing { get; private set; }
-        public double value { get; private set; }
-        public Delegate Function { get; private set; }
 
     }
 }

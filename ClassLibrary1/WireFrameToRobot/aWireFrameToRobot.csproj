@@ -31,6 +31,10 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="DSCoreNodes">
+      <HintPath>..\..\..\Dynamo\bin\AnyCPU\Debug\DSCoreNodes.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="DynamoText">
       <HintPath>..\extern\DynamoText\DynamoText.dll</HintPath>
     </Reference>
@@ -69,6 +73,6 @@
       <PackageFiles Include="$(OutDir)\aWireFrameToRobot.dll;$(OutDir)\aWireFrameToRobot.XML;$(OutDir)\DynamoText.dll;" />
     </ItemGroup>
     <Copy SourceFiles="@(PackageFiles)" DestinationFolder="$(SolutionDir)..\dynamo_package\DynamoToro\bin\" />
-    <Exec Command="XCOPY /E /Y $(SolutionDir)..\dynamo_package C:\Users\Mike\AppData\Roaming\Dynamo\1.0\packages\"/>
+    <Exec Command="XCOPY /E /Y $(SolutionDir)..\dynamo_package C:\Users\Mike\AppData\Roaming\Dynamo\1.0\packages\" />
   </Target>
 </Project>
