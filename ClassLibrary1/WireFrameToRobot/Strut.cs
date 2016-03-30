@@ -5,13 +5,28 @@ using System.Collections.Generic;
 using System.Linq;
 using Autodesk.DesignScript.Interfaces;
 using WireFrameToRobot.Extensions;
-
+using Color = DSCore.Color;
 namespace WireFrameToRobot
 {
 
-    public enum Material
+    public class Material
     {
-        Wood1,Wood2,Wood3,Wood4,Wood5,
+        public double ModulusElasticity { get; private set; }
+        public string Name { get; private set; }
+        public Color Color { get; private set; }
+
+        public static Material ByModulusName(string name, double modulus, Color color)
+        {
+            var mat = new Material(name,modulus,color);
+            return mat;
+        }
+
+        public Material(string name, double modulus, Color color)
+        {
+            this.ModulusElasticity = modulus;
+            this.Name = name;
+            this.Color = color;
+        }
     }
 
     
@@ -294,11 +309,11 @@ namespace WireFrameToRobot
         {
             package.RequiresPerVertexColoration = true;
             StrutGeometry.Tessellate(package, parameters);
-            var color = this.Material.MaterialToColor();
+            var color = this.Material.Color;
             var colors = new List<byte>();
             foreach (var vert in Enumerable.Range(0,package.MeshVertexCount))
             {
-                colors.AddRange(color);
+                colors.AddRange(new byte[] {color.Red,color.Blue,color.Green,color.Alpha });
             }
             package.ApplyMeshVertexColors(colors.ToArray());
         }
@@ -440,27 +455,6 @@ namespace WireFrameToRobot.Extensions
             }
 
             return p;
-        }
-
-        public static byte[] MaterialToColor(this Material m)
-        {
-            // Switch on the material enum.
-            switch (m)
-            {
-                case Material.Wood1:
-                    return new byte[] { 0, 0, 255, 255 };
-                case Material.Wood2:
-                    return new byte[] { 255, 0, 0, 255 };
-                case Material.Wood3:
-                    return new byte[] { 0, 255, 0, 255 };
-                case Material.Wood4:
-                    return new byte[] { 255, 255, 0, 255 };
-                case Material.Wood5:
-                    return new byte[] { 0, 255, 255, 255 };
-                default:
-                    return new byte[] { 200, 200, 200, 255 };
-
-            }
         }
     }
 }
