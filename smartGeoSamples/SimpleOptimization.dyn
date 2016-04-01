@@ -1,4 +1,4 @@
-<Workspace Version="0.9.2.4472" X="9902.31775167193" Y="10983.4045858901" zoom="0.582209365683126" Name="Home" Description="" RunType="Automatic" RunPeriod="100" HasRunWithoutCrash="True">
+<Workspace Version="0.9.2.4472" X="9189.06367122607" Y="10149.6815330862" zoom="0.524645798237129" Name="Home" Description="" RunType="Automatic" RunPeriod="100" HasRunWithoutCrash="True">
   <NamespaceResolutionMap>
     <ClassMap partialName="Autodesk.Geometry" resolvedName="Autodesk.DesignScript.Geometry.Geometry" assemblyName="ProtoGeometry.dll" />
     <ClassMap partialName="Autodesk.Point" resolvedName="Autodesk.DesignScript.Geometry.Point" assemblyName="ProtoGeometry.dll" />
@@ -68,7 +68,7 @@
       <PortInfo index="0" default="True" />
       <PortInfo index="1" default="True" />
     </Dynamo.Graph.Nodes.ZeroTouch.DSFunction>
-    <Dynamo.Graph.Nodes.CodeBlockNodeModel guid="4c09a3c5-8a8e-4de0-a8e2-bdf61ecab8a3" type="Dynamo.Graph.Nodes.CodeBlockNodeModel" nickname="Code Block" x="-19735" y="-17587" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" CodeText="40;" ShouldFocus="false" />
+    <Dynamo.Graph.Nodes.CodeBlockNodeModel guid="4c09a3c5-8a8e-4de0-a8e2-bdf61ecab8a3" type="Dynamo.Graph.Nodes.CodeBlockNodeModel" nickname="Code Block" x="-19735" y="-17587" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" CodeText="38;" ShouldFocus="false" />
     <Dynamo.Graph.Nodes.ZeroTouch.DSFunction guid="cad3ef0b-16ed-4999-a141-633bbea724a0" type="Dynamo.Graph.Nodes.ZeroTouch.DSFunction" nickname="Node.FindUniqueStruts" x="-17894.6948269349" y="-18476.0048566168" isVisible="false" isUpstreamVisible="true" lacing="Shortest" isSelectedInput="False" IsFrozen="false" assembly="C:\Users\Mike\AppData\Roaming\Dynamo\0.9\packages\DynamoToro\bin\aWireFrameToRobot.dll" function="WireFrameToRobot.Node.FindUniqueStruts@WireFrameToRobot.Node[]" />
     <Dynamo.Graph.Nodes.ZeroTouch.DSFunction guid="588c61f6-33b2-49d7-ae2e-c17adbacee7b" type="Dynamo.Graph.Nodes.ZeroTouch.DSFunction" nickname="LoopWhile" x="-15745.1612839195" y="-18448.4095094431" isVisible="true" isUpstreamVisible="true" lacing="Shortest" isSelectedInput="False" IsFrozen="false" assembly="BuiltIn" function="LoopWhile@var[]..[],_FunctionObject,_FunctionObject" />
     <Dynamo.Graph.Nodes.ZeroTouch.DSFunction guid="cd21ecaf-d2b3-4e0b-bfaa-34b3b3d976f8" type="Dynamo.Graph.Nodes.ZeroTouch.DSFunction" nickname="StrutMaterialEvaluator.GenerateNewSolution" x="-16074.1739769824" y="-18265.6322379039" isVisible="true" isUpstreamVisible="true" lacing="Shortest" isSelectedInput="False" IsFrozen="false" assembly="C:\Users\Mike\AppData\Roaming\Dynamo\0.9\packages\DynamoToro\bin\aWireFrameToRobot.dll" function="WireFrameToRobot.StrutUtilities.StrutMaterialEvaluator.GenerateNewSolution@WireFrameToRobot.StrutUtilities.StrutSolution" />
@@ -86,7 +86,7 @@
       <PortInfo index="2" default="True" />
       <PortInfo index="3" default="True" />
     </Dynamo.Graph.Nodes.ZeroTouch.DSFunction>
-    <Dynamo.Graph.Nodes.CodeBlockNodeModel guid="2117b759-481c-4dc3-a15a-62988943209a" type="Dynamo.Graph.Nodes.CodeBlockNodeModel" nickname="Code Block" x="-16939.7535716533" y="-18693" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" CodeText="2800;" ShouldFocus="false" />
+    <Dynamo.Graph.Nodes.CodeBlockNodeModel guid="2117b759-481c-4dc3-a15a-62988943209a" type="Dynamo.Graph.Nodes.CodeBlockNodeModel" nickname="Code Block" x="-16939.7535716533" y="-18693" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" CodeText="2500;" ShouldFocus="false" />
     <Dynamo.Graph.Nodes.ZeroTouch.DSFunction guid="8458e93b-467b-4feb-a87e-a6a02f0c6395" type="Dynamo.Graph.Nodes.ZeroTouch.DSFunction" nickname="StrutSolution.StrutLoadPackages" x="-15521.0276312011" y="-18455.194854517" isVisible="true" isUpstreamVisible="true" lacing="Shortest" isSelectedInput="False" IsFrozen="false" assembly="C:\Users\Mike\AppData\Roaming\Dynamo\0.9\packages\DynamoToro\bin\aWireFrameToRobot.dll" function="WireFrameToRobot.StrutUtilities.StrutSolution.StrutLoadPackages" />
     <Dynamo.Graph.Nodes.ZeroTouch.DSFunction guid="70062946-2905-40f0-8cdf-18f242413e77" type="Dynamo.Graph.Nodes.ZeroTouch.DSFunction" nickname="StrutLoadPackage.Strut" x="-15197.5753178931" y="-18449.0248711054" isVisible="true" isUpstreamVisible="true" lacing="Shortest" isSelectedInput="False" IsFrozen="false" assembly="C:\Users\Mike\AppData\Roaming\Dynamo\0.9\packages\DynamoToro\bin\aWireFrameToRobot.dll" function="WireFrameToRobot.StrutUtilities.StrutLoadPackage.Strut" />
     <Dynamo.Graph.Nodes.ZeroTouch.DSFunction guid="c2e1e7ff-ce27-4365-ba93-975f090c7262" type="Dynamo.Graph.Nodes.ZeroTouch.DSFunction" nickname="Strut.Material" x="-15077.6318372783" y="-18335.4025225388" isVisible="true" isUpstreamVisible="true" lacing="Shortest" isSelectedInput="False" IsFrozen="false" assembly="C:\Users\Mike\AppData\Roaming\Dynamo\0.9\packages\DynamoToro\bin\aWireFrameToRobot.dll" function="WireFrameToRobot.Strut.Material" />
@@ -189,6 +189,6 @@
   </Annotations>
   <Presets />
   <Cameras>
-    <Camera Name="Background Preview" eyeX="-3919.10929105867" eyeY="4069.98505361903" eyeZ="631.735426960595" lookX="3984.94193266023" lookY="-2771.05573232996" lookZ="-960.96809297622" upX="0.35911712716901" upY="0.929266062089911" upZ="-0.0866010242497857" />
+    <Camera Name="Background Preview" eyeX="3775.7426808267" eyeY="3210.76639652916" eyeZ="-1364.07236057918" lookX="-3193.30103043607" lookY="-1709.32486820885" lookZ="1132.47568089168" upX="-0.234249313980975" upY="0.968620764621687" upZ="0.0830744134000233" />
   </Cameras>
 </Workspace>

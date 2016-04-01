@@ -104,28 +104,37 @@ namespace WireFrameToRobot.StrutUtilities
         {//TODO IMPLEMENT THIS AS A DESIGN SCRIPT CODEBLOCK WITH SIGNATURE
          //(strutSolution solution,
          //Func<strut,StrutSolution> newSolutionStrategy, 
-            // List<Func<strut,bool>> evaluatorFunctions)
+         // List<Func<strut,bool>> evaluatorFunctions)
 
             //for now all we are going to do is take the last failing strut and 
             //and increment its material
-            var strutToModify = oldSolution.Failing.Last();
-            //increment the material by finding the material with great E than the current one
-            var newMat = oldSolution.PossibleMaterials.OrderBy(x => x.ModulusElasticityX).
-                Where(mat => mat.ModulusElasticityX > strutToModify.Material.ModulusElasticityX).FirstOrDefault();
+            var strutsToModify = oldSolution.Failing;
+            var newMats = new Dictionary<string,Material>();
+            var possibleMats = oldSolution.PossibleMaterials.OrderBy(x => x.ModulusElasticityX);
 
-            if (newMat == null)
+            //increment the material by finding the material with great E than the current one
+            foreach (var strutToModify in strutsToModify)
             {
-                //we couldnt find a material that would make this strut pass - use the super material
-                newMat = Material.Steel();
+                var newMat = possibleMats.
+             Where(mat => mat.ModulusElasticityX > strutToModify.Material.ModulusElasticityX).FirstOrDefault();
+
+                if (newMat == null)
+                {
+                    //we couldnt find a material that would make this strut pass - use the super material
+                    newMat = Material.Steel();
+                }
+
+                newMats.Add(strutToModify.ID, newMat);
             }
+        
 
             //build a new list of materials to set the struts to
             var materials = oldSolution.StrutLoadPackages.Select(x =>
             {
                 //only modify one strut
-                if (x.Strut.ID == strutToModify.ID)
+                if (newMats.ContainsKey(x.Strut.ID))
                 {
-                    return newMat;
+                    return newMats[x.Strut.ID];
                 }
                 return x.Strut.Material;
 
