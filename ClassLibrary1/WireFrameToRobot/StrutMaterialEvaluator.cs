@@ -19,7 +19,7 @@ namespace WireFrameToRobot.StrutUtilities
 
         {
             var surf = Autodesk.DesignScript.Geometry.Surface.ByPatch(strutLoadPackage.Strut.Profile);
-            var pass = surf.Area / (Math.Sqrt(strutLoadPackage.Strut.LineRepresentation.Length)) * strutLoadPackage.Strut.Material.ModulusElasticityX < strutLoadPackage.Axial;
+            var pass = (Math.Sqrt(strutLoadPackage.Strut.Material.ModulusElasticityX)*surf.Area)/ strutLoadPackage.Strut.LineRepresentation.Length > strutLoadPackage.Axial;
             surf.Dispose();
             return pass;
         }
@@ -58,8 +58,8 @@ namespace WireFrameToRobot.StrutUtilities
 
             var outputDict = new Dictionary<string, object>();
 
-            var passed = strutSolution.Where(strut => functionsToTest.All(test => test.Invoke(strut) == true)).ToList();
-            var failed = strutSolution.Where(strut => functionsToTest.Any(test => test.Invoke(strut) == false)).ToList();
+            var passed = strutSolution.Where(strutPackge => functionsToTest.All(test => test.Invoke(strutPackge) == true)).Select(x=>x.Strut).ToList();
+            var failed = strutSolution.Where(strutPackage => functionsToTest.Any(test => test.Invoke(strutPackage) == false)).Select(x => x.Strut).ToList();
 
             outputDict.Add("passed", passed);
             outputDict.Add("failed", failed);
@@ -111,7 +111,13 @@ namespace WireFrameToRobot.StrutUtilities
             var strutToModify = oldSolution.Failing.Last();
             //increment the material by finding the material with great E than the current one
             var newMat = oldSolution.PossibleMaterials.OrderBy(x => x.ModulusElasticityX).
-                Where(mat => mat.ModulusElasticityX > strutToModify.Material.ModulusElasticityX).First();
+                Where(mat => mat.ModulusElasticityX > strutToModify.Material.ModulusElasticityX).FirstOrDefault();
+
+            if (newMat == null)
+            {
+                //we couldnt find a material that would make this strut pass - use the super material
+                newMat = Material.Steel();
+            }
 
             //build a new list of materials to set the struts to
             var materials = oldSolution.StrutLoadPackages.Select(x =>
@@ -144,7 +150,7 @@ namespace WireFrameToRobot.StrutUtilities
     /// one would use this class to evaluate a specific strut to see if it passes
     /// a load check or not
     /// </summary>
-    public class StrutLoadPackage
+    public class StrutLoadPackage : IDisposable
     {
         public Strut Strut { get; private set; }
         public double Axial { get; private set; }
@@ -169,19 +175,23 @@ namespace WireFrameToRobot.StrutUtilities
         /// <returns></returns>
         public static StrutLoadPackage ByStrutForces(Strut strut, double axial = 0, double moment = 0, double shear = 0)
         {
-            return new StrutLoadPackage(strut, axial, moment, shear);
+            return new StrutLoadPackage(strut.Clone() as Strut, axial, moment, shear);
         }
         public StrutLoadPackage UpdateStrut(Strut strut)
         {
             return new StrutLoadPackage(strut, this.Axial,this.Moment, this.Shear);
         }
 
+        public void Dispose()
+        {
+            Strut.Dispose();
+        }
     }
 
     /// <summary>
     /// this class represents a specific configuration of struts and the evaluation of this configuration
     /// </summary>
-    public class StrutSolution
+    public class StrutSolution:IDisposable
     {
         public List<StrutLoadPackage> StrutLoadPackages { get; private set; }
         public List<Strut> Passing { get; private set; }
@@ -198,6 +208,9 @@ namespace WireFrameToRobot.StrutUtilities
             PossibleMaterials = materials;
         }
 
-
+        public void Dispose()
+        {
+            StrutLoadPackages.ForEach(x => x.Dispose());
+        }
     }
 }

@@ -76,7 +76,10 @@ namespace WireFrameToRobot
             return new Material("beech",54, 1720000, 1720000, 1720000, Color.ByARGB(255, 200, 0, 200));
         }
 
-
+        public static Material Steel()
+        {
+            return new Material("Steel", 490.059490523, 10000000000, 10000000000, 10000000000, Color.ByARGB(200, 255, 255, 255));
+        }
     }
 
 
