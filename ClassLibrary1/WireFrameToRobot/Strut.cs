@@ -291,7 +291,7 @@ namespace WireFrameToRobot
             var colors = new List<byte>();
             foreach (var vert in Enumerable.Range(0,package.MeshVertexCount))
             {
-                colors.AddRange(new byte[] {color.Red,color.Blue,color.Green,color.Alpha });
+                colors.AddRange(new byte[] {color.Red,color.Green,color.Blue,color.Alpha });
             }
             package.ApplyMeshVertexColors(colors.ToArray());
         }
