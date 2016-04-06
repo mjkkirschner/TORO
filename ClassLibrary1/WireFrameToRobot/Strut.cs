@@ -159,6 +159,35 @@ namespace WireFrameToRobot
             OwnerNode = owner;
             Profile = profile.Translate(0,0,0) as Curve;
         }
+
+
+        internal Strut (Line line, Curve profile, Material material, string id, double offset = 0)
+        {
+            LineRepresentation = line.Translate(0, 0, 0) as Line;
+            Profile = profile.Translate(0, 0, 0) as Curve;
+            Material = material;
+            this.SetId(id);
+            computeTrimmedLine(offset);
+            this.computeStrutGeometry();
+
+        }
+
+        /// <summary>
+        /// this constructor creates a strut directly, without any nodes so it is not
+        /// constructing a full topology and some queries will fail
+        /// this constructor is being created specifically for work at SG2016
+        /// </summary>
+        /// <param name="line"></param>
+        /// <param name="profile"></param>
+        /// <param name="material"></param>
+        /// <param name="id"></param>
+        /// <param name="offset"></param>
+        /// <returns></returns>
+        public static Strut ByLineProfileIdMaterialAndOffset(Line line, Curve profile,Material material,string id, double offset = 0)
+        {
+            return new Strut(line, profile, material, id, offset);
+        }
+
         /// <summary>
         /// this constructor creates a list of new struts from an existing list of struts but modifies the 
         /// materials of the new struts using a list of materials - the indicies of the struts and materials
@@ -217,8 +246,15 @@ namespace WireFrameToRobot
         internal void computeTrimmedLine(Node node1, Node node2)
         {
             var line = LineRepresentation;
-            var trim1 = line.Trim(node1.OrientedNodeGeometry, node1.Center).First() as Curve;
-            var trim2 = trim1.Trim(node2.OrientedNodeGeometry, node2.Center).First() as Curve;
+            var trim1 = line.Trim(node1.OrientedNodeGeometry, node1.Center).FirstOrDefault() as Curve;
+            var trim2 = trim1.Trim(node2.OrientedNodeGeometry, node2.Center).FirstOrDefault() as Curve;
+
+            //if either trim is null the node was too large and trimmed away the entire line
+            // so just return the entire line
+            if(trim1 == null || trim2 == null)
+            {
+                TrimmedLineRepresentation = LineRepresentation;
+            }
 
             var extend1 = trim2.ExtendStart(node1.DrillDepth);
             var extend2 = extend1.ExtendEnd(node2.DrillDepth);
@@ -231,6 +267,21 @@ namespace WireFrameToRobot
             extend1.Dispose();
             extend2.Dispose();
             
+        }
+
+        internal void computeTrimmedLine(double offset)
+        {
+            var line = LineRepresentation;
+          
+            var extend1 = line.ExtendStart(offset*-1);
+            var extend2 = extend1.ExtendEnd(offset * -1);
+
+            var output = Line.ByStartPointEndPoint(extend2.StartPoint, extend2.EndPoint);
+            this.TrimmedLineRepresentation = output;
+            
+            extend1.Dispose();
+            extend2.Dispose();
+
         }
 
         /// <summary>

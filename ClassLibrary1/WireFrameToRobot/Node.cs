@@ -609,7 +609,11 @@ namespace WireFrameToRobot
                             tempNodeTypes.Add(key, realPlaneAligned);
                             rev2.Dispose();
                             averageNormLocal.Dispose();
-                            realPlane.Dispose();
+                            if (!object.ReferenceEquals(realPlaneAligned, realPlane))
+                            {
+                                realPlane.Dispose();
+                            }
+                           
                         }
                         else
                         {
